@@ -384,7 +384,7 @@ THREE = {"index": True, "middle": True, "ring": True}
 
 
 def test_two_finger_flick_up_scrolls_with_inertia():
-    ctrl = make_ctrl(stable_frames=1)
+    ctrl = make_ctrl(gestures={"two_finger": "flick_scroll"}, stable_frames=1)
     cmds = swipe(ctrl, Gesture.TWO_FINGER, TWO, 0, -0.06)        # 每秒 1.8 個畫面高
     scrolls = [c for c in cmds if isinstance(c, Scroll)]
     assert scrolls and all(c.steps > 0 for c in scrolls)
@@ -396,20 +396,20 @@ def test_two_finger_flick_up_scrolls_with_inertia():
 
 
 def test_two_finger_flick_down_scrolls_down():
-    ctrl = make_ctrl(stable_frames=1)
+    ctrl = make_ctrl(gestures={"two_finger": "flick_scroll"}, stable_frames=1)
     cmds = swipe(ctrl, Gesture.TWO_FINGER, TWO, 0, 0.06)
     assert [c for c in cmds if isinstance(c, Scroll)][0].steps < 0
 
 
 def test_slow_two_finger_move_does_nothing():
-    ctrl = make_ctrl(stable_frames=1)
+    ctrl = make_ctrl(gestures={"two_finger": "flick_scroll"}, stable_frames=1)
     cmds = swipe(ctrl, Gesture.TWO_FINGER, TWO, 0, -0.005, n=20)
     assert cmds == []
     assert not ctrl.inertia_active
 
 
 def test_two_finger_flick_left_right_is_back_forward():
-    ctrl = make_ctrl(stable_frames=1)
+    ctrl = make_ctrl(gestures={"two_finger": "flick_scroll"}, stable_frames=1)
     left = swipe(ctrl, Gesture.TWO_FINGER, TWO, -0.05, 0)
     assert left.count(FLICK_NAV["left"]) == 1                   # 一次甩動只觸發一次
     right = swipe(ctrl, Gesture.TWO_FINGER, TWO, 0.05, 0, t0=2)
@@ -418,7 +418,7 @@ def test_two_finger_flick_left_right_is_back_forward():
 
 
 def test_return_motion_within_cooldown_is_ignored():
-    ctrl = make_ctrl(stable_frames=1)
+    ctrl = make_ctrl(gestures={"two_finger": "flick_scroll"}, stable_frames=1)
     out = swipe(ctrl, Gesture.TWO_FINGER, TWO, 0.05, 0)
     # 馬上把手收回來（反方向），在冷卻時間內不應觸發上一頁
     back = [(Gesture.TWO_FINGER, make_hand(offset=(0.25 - 0.05 * i, 0), **TWO)) for i in range(1, 6)]
@@ -428,7 +428,7 @@ def test_return_motion_within_cooldown_is_ignored():
 
 
 def test_diagonal_flick_is_ignored():
-    ctrl = make_ctrl(stable_frames=1)
+    ctrl = make_ctrl(gestures={"two_finger": "flick_scroll"}, stable_frames=1)
     assert swipe(ctrl, Gesture.TWO_FINGER, TWO, 0.04, -0.04) == []
 
 
@@ -451,3 +451,48 @@ def test_flick_ignored_while_paused():
     run(ctrl, [(Gesture.FIST, make_hand(index=False))] * 10)
     assert ctrl.paused
     assert swipe(ctrl, Gesture.THREE_FINGER, THREE, 0, 0.05, t0=1) == []
+
+
+
+# ---------- 手掌快速上下甩 = 捲動 ----------
+
+PALM = {"index": True, "middle": True, "ring": True, "pinky": True}
+
+
+def test_palm_fast_vertical_flick_scrolls():
+    ctrl = make_ctrl("relative", stable_frames=1)
+    cmds = swipe(ctrl, Gesture.PALM, PALM, 0, -0.09)          # 每秒 2.7 個畫面高
+    scrolls = [c for c in cmds if isinstance(c, Scroll)]
+    assert scrolls and scrolls[0].steps > 0
+    assert any(isinstance(c, MoveBy) for c in cmds)          # 游標照常移動（留在甩完的位置）
+    assert ctrl.inertia_active
+
+
+def test_palm_normal_move_does_not_scroll():
+    ctrl = make_ctrl("relative", stable_frames=1)
+    cmds = swipe(ctrl, Gesture.PALM, PALM, 0, -0.04, n=8)     # 每秒 1.2 個畫面高：一般移動
+    assert not any(isinstance(c, Scroll) for c in cmds)
+
+
+def test_palm_fast_horizontal_flick_navigates():
+    ctrl = make_ctrl("relative", stable_frames=1)
+    left = swipe(ctrl, Gesture.PALM, PALM, -0.09, 0)
+    assert [c for c in left if isinstance(c, Hotkey)] == [FLICK_NAV["left"]]
+    assert not any(isinstance(c, Scroll) for c in left)
+    right = swipe(ctrl, Gesture.PALM, PALM, 0.09, 0, t0=2)
+    assert FLICK_NAV["right"] in right
+
+
+def test_palm_normal_horizontal_move_does_not_navigate():
+    ctrl = make_ctrl("relative", stable_frames=1)
+    assert not any(isinstance(c, Hotkey) for c in swipe(ctrl, Gesture.PALM, PALM, 0.04, 0, n=8))
+
+
+def test_palm_flick_nav_can_be_disabled():
+    ctrl = make_ctrl("relative", stable_frames=1, palm_flick_nav=False)
+    assert not any(isinstance(c, (Scroll, Hotkey)) for c in swipe(ctrl, Gesture.PALM, PALM, 0.1, 0))
+
+
+def test_two_finger_does_nothing_by_default():
+    ctrl = make_ctrl(stable_frames=1)
+    assert swipe(ctrl, Gesture.TWO_FINGER, TWO, 0, -0.09) == []

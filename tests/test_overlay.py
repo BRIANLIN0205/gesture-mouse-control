@@ -29,7 +29,7 @@ def test_status_for_each_gesture():
     feed(c, Gesture.PINCH_INDEX, hand, t0=0.1)
     assert overlay_status(c, True, False) == "pinch"
     feed(c, Gesture.TWO_FINGER, hand, t0=0.2)
-    assert overlay_status(c, True, False) == "scroll"
+    assert overlay_status(c, True, False) == "idle"    # 雙指預設沒有作用
     feed(c, Gesture.THREE_FINGER, hand, t0=0.25)
     assert overlay_status(c, True, False) == "windows"
     feed(c, Gesture.FIST, hand, t0=0.3)

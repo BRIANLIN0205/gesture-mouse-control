@@ -28,7 +28,7 @@ def test_steps_complete_in_order():
     t.feed([Scroll(2)], Gesture.TWO_FINGER, False)
     assert t.feed([Scroll(-1)], Gesture.TWO_FINGER, False)               # scroll
     assert not t.feed([FLICK_WINDOWS["left"]], Gesture.THREE_FINGER, False)
-    assert t.feed([FLICK_NAV["left"]], Gesture.TWO_FINGER, False)        # nav
+    assert t.feed([FLICK_NAV["left"]], Gesture.PALM, False)              # nav
     assert t.feed([FLICK_WINDOWS["down"]], Gesture.THREE_FINGER, False)  # windows
     assert t.feed([PauseChanged(True)], Gesture.FIST, True)              # pause
     assert not t.done

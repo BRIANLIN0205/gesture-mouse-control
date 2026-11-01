@@ -15,7 +15,7 @@ class Gesture(str, Enum):
     POINT = "point"                # 只伸出食指
     PINCH_INDEX = "pinch_index"    # 食指 + 拇指捏合
     PINCH_MIDDLE = "pinch_middle"  # 中指 + 拇指捏合
-    TWO_FINGER = "two_finger"      # 食指 + 中指伸出（甩動捲動、上一頁 / 下一頁）
+    TWO_FINGER = "two_finger"      # 食指 + 中指伸出（預設沒有作用）
     THREE_FINGER = "three_finger"  # 食指 + 中指 + 無名指伸出（視窗手勢）
     FIST = "fist"                  # 握拳
 

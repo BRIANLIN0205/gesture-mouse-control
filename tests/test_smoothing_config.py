@@ -33,7 +33,7 @@ def test_filter_reset():
 
 def test_default_config():
     cfg = Config()
-    assert cfg.action_for(Gesture.PALM) == "move_cursor"
+    assert cfg.action_for(Gesture.PALM) == "move_flick_scroll"
     assert cfg.action_for(Gesture.POINT) == "none"
     assert cfg.action_for(Gesture.PINCH_INDEX) == "pinch_smart"
     assert cfg.action_for(Gesture.FIST) == "toggle_pause"
@@ -45,7 +45,7 @@ def test_repo_config_file_loads(tmp_path):
 
     cfg = load_config(Path(__file__).resolve().parent.parent / "config.yaml")
     assert cfg.camera.mirror is True
-    assert cfg.gestures["two_finger"] == "flick_scroll"
+    assert cfg.gestures["two_finger"] == "none"
     assert cfg.gestures["three_finger"] == "flick_windows"
 
 
@@ -54,7 +54,7 @@ def test_partial_config_keeps_defaults():
     assert cfg.cursor.frame_margin == 0.2
     assert cfg.cursor.pointer_landmark == 5
     assert cfg.gestures["fist"] == "none"
-    assert cfg.gestures["palm"] == "move_cursor"
+    assert cfg.gestures["palm"] == "move_flick_scroll"
 
 
 @pytest.mark.parametrize(

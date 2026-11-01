@@ -13,6 +13,7 @@ from .gestures import Gesture
 # 可以指定給手勢的動作
 ACTIONS = {
     "move_cursor",   # 移動游標
+    "move_flick_scroll",  # 移動游標；快速上下甩 = 捲動（帶慣性）、左右甩 = 上一頁 / 下一頁
     "pinch_smart",   # 輕捏 = 左鍵點擊；捏著移動 = 拖曳；捏住不動一段時間 = 右鍵
     "hold_left",     # 按住左鍵（放開手勢才放開；按住時移動就是拖曳）
     "hold_right",    # 按住右鍵
@@ -27,11 +28,11 @@ ACTIONS = {
 }
 
 DEFAULT_GESTURE_ACTIONS: Dict[str, str] = {
-    Gesture.PALM.value: "move_cursor",
+    Gesture.PALM.value: "move_flick_scroll",
     Gesture.POINT.value: "none",
     Gesture.PINCH_INDEX.value: "pinch_smart",
     Gesture.PINCH_MIDDLE.value: "click_right",
-    Gesture.TWO_FINGER.value: "flick_scroll",
+    Gesture.TWO_FINGER.value: "none",
     Gesture.THREE_FINGER.value: "flick_windows",
     Gesture.FIST.value: "toggle_pause",
 }
@@ -82,7 +83,9 @@ class ControlConfig:
     scroll_inertia: bool = True      # 捲動手勢結束時若還在快速移動，繼續捲動並慢慢減速
     scroll_inertia_min_speed: float = 15.0  # 結束時速度超過每秒幾格才觸發慣性
     scroll_inertia_friction: float = 3.0    # 慣性減速快慢，越大停得越快
-    swipe_min_speed: float = 1.2     # 甩動判定：手的速度至少每秒幾個畫面高
+    palm_flick_nav: bool = True      # 手掌快速左右甩 = 上一頁 / 下一頁
+    palm_swipe_min_speed: float = 2.0  # 手掌甩動捲動的速度門檻（比雙指 / 三指高，避免快速移動游標被誤判）
+    swipe_min_speed: float = 1.2     # 雙指 / 三指甩動判定：手的速度至少每秒幾個畫面高
     swipe_min_distance: float = 0.08 # 甩動判定：0.2 秒內至少移動畫面高的幾成
     swipe_cooldown: float = 0.5      # 一次甩動後多久內不再判定（避免手收回來時誤判反方向）
     flick_scroll_gain: float = 20.0  # 甩動捲動：甩動速度 × 這個值 = 一開始每秒捲幾格

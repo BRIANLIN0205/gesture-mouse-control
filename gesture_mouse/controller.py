@@ -76,7 +76,7 @@ FLICK_WINDOWS = {
 Command = object
 
 # 這些動作進行中會帶動游標
-_POINTER_ACTIONS = ("move_cursor", "hold_left", "hold_right", "pinch_smart")
+_POINTER_ACTIONS = ("move_cursor", "move_flick_scroll", "hold_left", "hold_right", "pinch_smart")
 # 這些動作開始時要鎖住游標，避免捏合時手抖把點擊點歪
 _CLICK_ACTIONS = ("hold_left", "hold_right", "click_left", "click_right", "double_click", "pinch_smart")
 
@@ -217,7 +217,7 @@ class Controller:
         elif action == "toggle_pause":
             self._pause_start = t
             self._pause_toggled = False
-        elif action in ("flick_scroll", "flick_windows"):
+        elif action in ("flick_scroll", "flick_windows", "move_flick_scroll"):
             self._swipe_hist.clear()
         if action in _CLICK_ACTIONS:
             self._lock_until = t + self.cfg.control.click_lock_seconds
@@ -253,6 +253,14 @@ class Controller:
             cmd = self._move(lm, t)   # 鎖定時仍要更新位置，解鎖後才不會跳
             if cmd is not None and not self._cursor_locked(t):
                 cmds.append(cmd)
+            if action == "move_flick_scroll":
+                # 手掌快速上下甩 = 捲動、左右甩 = 上一頁 / 下一頁（游標照常移動，留在甩完的位置）
+                direction, speed = self._detect_swipe(
+                    lm, t, self.cfg.control.palm_swipe_min_speed,
+                    vertical_only=not self.cfg.control.palm_flick_nav,
+                )
+                if direction:
+                    self._on_flick("flick_scroll", direction, speed, cmds)
         elif action == "scroll":
             self._scroll(lm, t, cmds)
         elif action in ("flick_scroll", "flick_windows"):
@@ -371,9 +379,13 @@ class Controller:
 
     _SWIPE_WINDOW = 0.2
 
-    def _detect_swipe(self, lm: Landmarks, t: float) -> Tuple[Optional[str], float]:
+    def _detect_swipe(
+        self, lm: Landmarks, t: float, min_speed: Optional[float] = None, vertical_only: bool = False
+    ) -> Tuple[Optional[str], float]:
         """用手掌中心（中指根部）最近 0.2 秒的位移判斷是否快速甩動。回傳 (方向, 速度)。"""
         c = self.cfg.control
+        if min_speed is None:
+            min_speed = c.swipe_min_speed
         p = lm[MIDDLE_MCP]
         hist = self._swipe_hist
         hist.append((t, p[0], p[1]))
@@ -388,12 +400,12 @@ class Controller:
         dx, dy = p[0] - x0, p[1] - y0
         dist = math.hypot(dx, dy)
         speed = dist / dt
-        if dist < c.swipe_min_distance or speed < c.swipe_min_speed:
+        if dist < c.swipe_min_distance or speed < min_speed:
             return None, 0.0
         # 主要方向要明顯（避免斜甩被亂判）
         if abs(dy) >= abs(dx) * 1.5:
             direction = "up" if dy < 0 else "down"
-        elif abs(dx) >= abs(dy) * 1.5:
+        elif abs(dx) >= abs(dy) * 1.5 and not vertical_only:
             direction = "left" if dx < 0 else "right"
         else:
             return None, 0.0
