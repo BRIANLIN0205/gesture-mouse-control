@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from typing import Iterable, Tuple
 
-from .controller import Click, MoveBy, MoveTo, Press, Release, Scroll
+from .controller import Click, Hotkey, MoveBy, MoveTo, Press, Release, Scroll
 
 
 def enable_dpi_awareness() -> None:
@@ -46,8 +46,16 @@ class PynputMouse:
     def __init__(self) -> None:
         from pynput.mouse import Button, Controller
 
+        from pynput.keyboard import Controller as KeyboardController
+        from pynput.keyboard import Key
+
         self._mouse = Controller()
         self._buttons = {"left": Button.left, "right": Button.right}
+        self._keyboard = KeyboardController()
+        self._keys = {
+            "alt": Key.alt, "shift": Key.shift, "ctrl": Key.ctrl, "win": Key.cmd,
+            "tab": Key.tab, "left": Key.left, "right": Key.right, "up": Key.up, "down": Key.down,
+        }
 
     @property
     def position(self) -> Tuple[int, int]:
@@ -68,3 +76,16 @@ class PynputMouse:
                 self._mouse.click(self._buttons[cmd.button], cmd.count)
             elif isinstance(cmd, Scroll):
                 self._mouse.scroll(0, cmd.steps)
+            elif isinstance(cmd, Hotkey):
+                self._hotkey(cmd.keys)
+
+    def _hotkey(self, names) -> None:
+        keys = [self._keys.get(n, n) for n in names]
+        pressed = []
+        try:
+            for k in keys:
+                self._keyboard.press(k)
+                pressed.append(k)
+        finally:
+            for k in reversed(pressed):
+                self._keyboard.release(k)

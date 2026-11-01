@@ -7,12 +7,13 @@
 from __future__ import annotations
 
 import math
+from collections import deque
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Deque, List, Optional, Tuple
 
 from .config import Config
 from .gestures import Gesture
-from .hand import Landmarks, INDEX_TIP, MIDDLE_TIP
+from .hand import Landmarks, INDEX_TIP, MIDDLE_MCP, MIDDLE_TIP
 from .smoothing import PointFilter
 
 
@@ -53,6 +54,24 @@ class Scroll:
 class PauseChanged:
     paused: bool  # True = 剛暫停，False = 剛恢復（用來播音效）
 
+
+@dataclass(frozen=True)
+class Hotkey:
+    keys: Tuple[str, ...]  # 例如 ("alt", "left")；同時按下再依反序放開
+    name: str = ""         # 給教學 / 記錄用的名稱，例如 "back"
+
+
+# 甩動方向 → 快捷鍵
+FLICK_NAV = {
+    "left": Hotkey(("alt", "left"), "back"),        # 上一頁
+    "right": Hotkey(("alt", "right"), "forward"),   # 下一頁
+}
+FLICK_WINDOWS = {
+    "up": Hotkey(("win", "tab"), "task_view"),          # 所有視窗
+    "down": Hotkey(("win", "d"), "show_desktop"),       # 顯示桌面
+    "left": Hotkey(("alt", "shift", "tab"), "prev_window"),
+    "right": Hotkey(("alt", "tab"), "next_window"),
+}
 
 Command = object
 
@@ -95,6 +114,10 @@ class Controller:
         self._smart_acc = [0.0, 0.0]
         self._smart_abs_start: Optional[Tuple[int, int]] = None
         self._hand_lost = False
+        # 甩動偵測：最近 0.2 秒手掌中心的位置
+        self._swipe_hist: Deque[Tuple[float, float, float]] = deque()
+        self._swipe_block_until = 0.0
+        self.last_flick: Optional[str] = None   # 最近一次甩動（給教學 / 狀態顯示用）
 
     # ---------- 對外介面 ----------
 
@@ -191,13 +214,15 @@ class Controller:
             self._scroll_accum = 0.0
             self._scroll_v = 0.0
             self._scroll_last_t = t
-        if action in _CLICK_ACTIONS:
-            self._lock_until = t + self.cfg.control.click_lock_seconds
-        if action in ("scroll",) or action in _CLICK_ACTIONS:
-            self._stop_inertia()   # 再次捲動或點擊時停止慣性（像觸控板手指一碰就停）
         elif action == "toggle_pause":
             self._pause_start = t
             self._pause_toggled = False
+        elif action in ("flick_scroll", "flick_windows"):
+            self._swipe_hist.clear()
+        if action in _CLICK_ACTIONS:
+            self._lock_until = t + self.cfg.control.click_lock_seconds
+        if action == "scroll" or action in _CLICK_ACTIONS:
+            self._stop_inertia()   # 再次捲動或點擊時停止慣性（像觸控板手指一碰就停）
 
     def _reset_pointer(self) -> None:
         """手離開或換手勢時呼叫：下次移動重新起算，游標不會跳。"""
@@ -230,6 +255,10 @@ class Controller:
                 cmds.append(cmd)
         elif action == "scroll":
             self._scroll(lm, t, cmds)
+        elif action in ("flick_scroll", "flick_windows"):
+            direction, speed = self._detect_swipe(lm, t)
+            if direction:
+                self._on_flick(action, direction, speed, cmds)
         elif action == "toggle_pause":
             if (
                 self._pause_start is not None
@@ -337,6 +366,67 @@ class Controller:
         ):
             return True
         return False
+
+    # ---------- 甩動 ----------
+
+    _SWIPE_WINDOW = 0.2
+
+    def _detect_swipe(self, lm: Landmarks, t: float) -> Tuple[Optional[str], float]:
+        """用手掌中心（中指根部）最近 0.2 秒的位移判斷是否快速甩動。回傳 (方向, 速度)。"""
+        c = self.cfg.control
+        p = lm[MIDDLE_MCP]
+        hist = self._swipe_hist
+        hist.append((t, p[0], p[1]))
+        while hist and t - hist[0][0] > self._SWIPE_WINDOW:
+            hist.popleft()
+        if t < self._swipe_block_until or len(hist) < 2:
+            return None, 0.0
+        t0, x0, y0 = hist[0]
+        dt = t - t0
+        if dt <= 0:
+            return None, 0.0
+        dx, dy = p[0] - x0, p[1] - y0
+        dist = math.hypot(dx, dy)
+        speed = dist / dt
+        if dist < c.swipe_min_distance or speed < c.swipe_min_speed:
+            return None, 0.0
+        # 主要方向要明顯（避免斜甩被亂判）
+        if abs(dy) >= abs(dx) * 1.5:
+            direction = "up" if dy < 0 else "down"
+        elif abs(dx) >= abs(dy) * 1.5:
+            direction = "left" if dx < 0 else "right"
+        else:
+            return None, 0.0
+        # 捲動力道用「最近一小段」的速度，比較接近甩動當下的快慢
+        recent = [h for h in hist if t - h[0] <= 0.07] or [hist[-2]]
+        if recent[0][0] < t:
+            rt, rx, ry = recent[0]
+            speed = max(speed, math.hypot(p[0] - rx, p[1] - ry) / (t - rt))
+        hist.clear()
+        self._swipe_block_until = t + c.swipe_cooldown
+        return direction, speed
+
+    def _on_flick(self, action: str, direction: str, speed: float, cmds: List[Command]) -> None:
+        self.last_flick = direction
+        if action == "flick_windows":
+            cmds.append(FLICK_WINDOWS[direction])
+            return
+        if direction in FLICK_NAV:
+            cmds.append(FLICK_NAV[direction])
+            return
+        # 上下甩 = 捲動：給一個初速，之後靠慣性慢慢停下
+        v = speed * self.cfg.control.flick_scroll_gain
+        if direction == "down":
+            v = -v                      # 手往上甩 = 往上捲
+        if self.cfg.control.scroll_invert:
+            v = -v
+        if self._inertia_v and (self._inertia_v > 0) == (v > 0):
+            v += self._inertia_v        # 同方向連續甩，越甩越快
+        self._inertia_v = v
+        self._inertia_rem = 0.0
+        # 第一格立刻捲，手感比較即時
+        first = 1 if v > 0 else -1
+        cmds.append(Scroll(first))
 
     # ---------- 捲動慣性 ----------
 

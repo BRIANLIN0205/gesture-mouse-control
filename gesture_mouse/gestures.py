@@ -15,7 +15,8 @@ class Gesture(str, Enum):
     POINT = "point"                # 只伸出食指
     PINCH_INDEX = "pinch_index"    # 食指 + 拇指捏合
     PINCH_MIDDLE = "pinch_middle"  # 中指 + 拇指捏合
-    TWO_FINGER = "two_finger"      # 食指 + 中指伸出（捲動）
+    TWO_FINGER = "two_finger"      # 食指 + 中指伸出（甩動捲動、上一頁 / 下一頁）
+    THREE_FINGER = "three_finger"  # 食指 + 中指 + 無名指伸出（視窗手勢）
     FIST = "fist"                  # 握拳
 
 
@@ -79,11 +80,15 @@ class GestureClassifier:
         if ext["index"] and ext["middle"] and not ext["ring"] and not ext["pinky"]:
             return Gesture.TWO_FINGER
 
-        # 4. 張開手掌：四指都伸直
+        # 4. 三指：食指、中指、無名指伸直，小指彎曲
+        if ext["index"] and ext["middle"] and ext["ring"] and not ext["pinky"]:
+            return Gesture.THREE_FINGER
+
+        # 5. 張開手掌：四指都伸直
         if all(ext.values()):
             return Gesture.PALM
 
-        # 5. 只有食指伸直
+        # 6. 只有食指伸直
         if ext["index"] and not ext["middle"] and not ext["ring"] and not ext["pinky"]:
             return Gesture.POINT
 

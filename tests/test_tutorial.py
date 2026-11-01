@@ -1,7 +1,7 @@
 import numpy as np
 
 from gesture_mouse.config import config_from_dict
-from gesture_mouse.controller import Click, Controller, MoveBy, PauseChanged, Press, Release, Scroll
+from gesture_mouse.controller import FLICK_NAV, FLICK_WINDOWS, Click, Controller, MoveBy, PauseChanged, Press, Release, Scroll
 from gesture_mouse.gestures import Gesture
 from gesture_mouse.tutorial import STEPS, TutorialPanel, TutorialTracker
 
@@ -27,6 +27,9 @@ def test_steps_complete_in_order():
     assert t.feed([Click("right")], Gesture.PINCH_MIDDLE, False)         # middle
     t.feed([Scroll(2)], Gesture.TWO_FINGER, False)
     assert t.feed([Scroll(-1)], Gesture.TWO_FINGER, False)               # scroll
+    assert not t.feed([FLICK_WINDOWS["left"]], Gesture.THREE_FINGER, False)
+    assert t.feed([FLICK_NAV["left"]], Gesture.TWO_FINGER, False)        # nav
+    assert t.feed([FLICK_WINDOWS["down"]], Gesture.THREE_FINGER, False)  # windows
     assert t.feed([PauseChanged(True)], Gesture.FIST, True)              # pause
     assert not t.done
     assert t.feed([PauseChanged(False)], Gesture.FIST, False)            # resume

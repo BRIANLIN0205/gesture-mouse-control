@@ -45,7 +45,8 @@ def test_repo_config_file_loads(tmp_path):
 
     cfg = load_config(Path(__file__).resolve().parent.parent / "config.yaml")
     assert cfg.camera.mirror is True
-    assert cfg.gestures["two_finger"] == "scroll"
+    assert cfg.gestures["two_finger"] == "flick_scroll"
+    assert cfg.gestures["three_finger"] == "flick_windows"
 
 
 def test_partial_config_keeps_defaults():

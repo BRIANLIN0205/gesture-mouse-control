@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Optional
 
-from .controller import Click, MoveBy, MoveTo, PauseChanged, Press, Release, Scroll
+from .controller import FLICK_NAV, FLICK_WINDOWS, Click, Hotkey, MoveBy, MoveTo, PauseChanged, Press, Release, Scroll
 from .gestures import Gesture
 
 DONE_FLAG = Path(__file__).resolve().parent.parent / ".tutorial_done"
@@ -30,7 +30,9 @@ STEPS: List[Step] = [
     Step("hold_right", "食指和拇指捏住不動約 0.6 秒（右鍵）", "Index pinch and hold still (right click)"),
     Step("drag", "食指和拇指捏住並移動，再放開（拖曳）", "Index pinch and move, then release (drag)"),
     Step("middle", "中指和拇指捏一下（也是右鍵）", "Middle pinch (right click)"),
-    Step("scroll", "伸出食指和中指，上下移動（捲動）", "Index + middle up/down (scroll)"),
+    Step("scroll", "伸出食指和中指，快速往上或往下甩（捲動）", "Index + middle: flick up/down (scroll)"),
+    Step("nav", "食指和中指快速往左或往右甩（上一頁 / 下一頁）", "Index + middle: flick left/right (back/forward)"),
+    Step("windows", "伸出食指、中指、無名指，往任一方向甩（視窗）", "Three fingers: flick any direction (windows)"),
     Step("pause", "握拳約 1.5 秒（暫停，會有提示音）", "Hold fist ~1.5 s (pause)"),
     Step("resume", "再握拳約 1.5 秒（恢復）", "Hold fist again (resume)"),
 ]
@@ -90,6 +92,10 @@ class TutorialTracker:
         elif k == "scroll":
             self._scroll_total += sum(abs(c.steps) for c in cmds if isinstance(c, Scroll))
             ok = self._scroll_total >= 3
+        elif k == "nav":
+            ok = any(c in FLICK_NAV.values() for c in cmds if isinstance(c, Hotkey))
+        elif k == "windows":
+            ok = any(c in FLICK_WINDOWS.values() for c in cmds if isinstance(c, Hotkey))
         elif k == "pause":
             ok = PauseChanged(True) in cmds
         elif k == "resume":

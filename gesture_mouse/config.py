@@ -19,7 +19,9 @@ ACTIONS = {
     "click_left",    # 左鍵單擊
     "click_right",   # 右鍵單擊
     "double_click",  # 左鍵雙擊
-    "scroll",        # 上下移動手來捲動
+    "scroll",        # 上下移動手來捲動（慢慢移動就捲，舊做法）
+    "flick_scroll",  # 快速上下甩 = 捲動（帶慣性）；左右甩 = 上一頁 / 下一頁
+    "flick_windows", # 快速上甩 = 所有視窗、下甩 = 顯示桌面、左右甩 = 切換視窗
     "toggle_pause",  # 維持一段時間後切換暫停 / 恢復
     "none",          # 不做事
 }
@@ -29,7 +31,8 @@ DEFAULT_GESTURE_ACTIONS: Dict[str, str] = {
     Gesture.POINT.value: "none",
     Gesture.PINCH_INDEX.value: "pinch_smart",
     Gesture.PINCH_MIDDLE.value: "click_right",
-    Gesture.TWO_FINGER.value: "scroll",
+    Gesture.TWO_FINGER.value: "flick_scroll",
+    Gesture.THREE_FINGER.value: "flick_windows",
     Gesture.FIST.value: "toggle_pause",
 }
 
@@ -79,6 +82,10 @@ class ControlConfig:
     scroll_inertia: bool = True      # 捲動手勢結束時若還在快速移動，繼續捲動並慢慢減速
     scroll_inertia_min_speed: float = 15.0  # 結束時速度超過每秒幾格才觸發慣性
     scroll_inertia_friction: float = 3.0    # 慣性減速快慢，越大停得越快
+    swipe_min_speed: float = 1.2     # 甩動判定：手的速度至少每秒幾個畫面高
+    swipe_min_distance: float = 0.08 # 甩動判定：0.2 秒內至少移動畫面高的幾成
+    swipe_cooldown: float = 0.5      # 一次甩動後多久內不再判定（避免手收回來時誤判反方向）
+    flick_scroll_gain: float = 20.0  # 甩動捲動：甩動速度 × 這個值 = 一開始每秒捲幾格
 
 
 @dataclass

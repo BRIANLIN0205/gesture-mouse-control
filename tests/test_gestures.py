@@ -32,8 +32,12 @@ def test_open_palm_is_palm(clf):
     assert clf.classify(make_hand(index=True, middle=True, ring=True, pinky=True)) == Gesture.PALM
 
 
-def test_three_fingers_is_none(clf):
-    assert clf.classify(make_hand(index=True, middle=True, ring=True)) == Gesture.NONE
+def test_three_fingers(clf):
+    assert clf.classify(make_hand(index=True, middle=True, ring=True)) == Gesture.THREE_FINGER
+
+
+def test_middle_ring_pinky_without_index_is_none(clf):
+    assert clf.classify(make_hand(index=False, middle=True, ring=True, pinky=True)) == Gesture.NONE
 
 
 def test_pinch_from_open_palm(clf):

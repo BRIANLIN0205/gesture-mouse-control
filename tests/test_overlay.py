@@ -30,6 +30,8 @@ def test_status_for_each_gesture():
     assert overlay_status(c, True, False) == "pinch"
     feed(c, Gesture.TWO_FINGER, hand, t0=0.2)
     assert overlay_status(c, True, False) == "scroll"
+    feed(c, Gesture.THREE_FINGER, hand, t0=0.25)
+    assert overlay_status(c, True, False) == "windows"
     feed(c, Gesture.FIST, hand, t0=0.3)
     assert overlay_status(c, True, False) == "lift"
     feed(c, Gesture.POINT, hand, t0=0.4)
@@ -63,7 +65,7 @@ def test_warning_blinks():
 
 
 def test_every_status_has_color():
-    for s in ["move", "pinch", "drag", "scroll", "lift", "paused", "nohand", "idle", "warning"]:
+    for s in ["move", "pinch", "drag", "scroll", "lift", "paused", "nohand", "idle", "warning", "windows"]:
         assert s in COLORS
 
 

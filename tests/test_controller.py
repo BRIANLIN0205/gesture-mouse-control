@@ -80,7 +80,7 @@ def test_release_all():
 
 
 def test_scroll_up_when_hand_moves_up():
-    ctrl = make_ctrl(stable_frames=1, scroll_sensitivity=100)
+    ctrl = make_ctrl(gestures={"two_finger": "scroll"}, stable_frames=1, scroll_sensitivity=100)
     frames = [(Gesture.TWO_FINGER, make_hand(index=True, middle=True, offset=(0, -0.02 * i))) for i in range(5)]
     cmds = flat(run(ctrl, frames))
     assert cmds and all(isinstance(c, Scroll) for c in cmds)
@@ -89,9 +89,9 @@ def test_scroll_up_when_hand_moves_up():
 
 def test_scroll_down_and_invert():
     frames = [(Gesture.TWO_FINGER, make_hand(index=True, middle=True, offset=(0, 0.02 * i))) for i in range(5)]
-    down = flat(run(make_ctrl(stable_frames=1, scroll_sensitivity=100), frames))
+    down = flat(run(make_ctrl(gestures={"two_finger": "scroll"}, stable_frames=1, scroll_sensitivity=100), frames))
     assert sum(c.steps for c in down) == -8
-    inv = flat(run(make_ctrl(stable_frames=1, scroll_sensitivity=100, scroll_invert=True), frames))
+    inv = flat(run(make_ctrl(gestures={"two_finger": "scroll"}, stable_frames=1, scroll_sensitivity=100, scroll_invert=True), frames))
     assert sum(c.steps for c in inv) == 8
 
 
@@ -275,24 +275,24 @@ def flick(ctrl, dy, n=6):
 
 
 def test_fast_flick_keeps_scrolling_and_slows_down():
-    ctrl = make_ctrl(stable_frames=1, scroll_sensitivity=100)
+    ctrl = make_ctrl(gestures={"two_finger": "scroll"}, stable_frames=1, scroll_sensitivity=100)
     scrolls = flick(ctrl, -0.03)      # 手往上甩 → 往上捲
     assert scrolls and all(s.steps > 0 for s in scrolls)
     assert not ctrl.inertia_active   # 2 秒內會停下來
 
 
 def test_slow_scroll_has_no_inertia():
-    ctrl = make_ctrl(stable_frames=1, scroll_sensitivity=100)
+    ctrl = make_ctrl(gestures={"two_finger": "scroll"}, stable_frames=1, scroll_sensitivity=100)
     assert flick(ctrl, -0.001) == []
 
 
 def test_inertia_can_be_disabled():
-    ctrl = make_ctrl(stable_frames=1, scroll_sensitivity=100, scroll_inertia=False)
+    ctrl = make_ctrl(gestures={"two_finger": "scroll"}, stable_frames=1, scroll_sensitivity=100, scroll_inertia=False)
     assert flick(ctrl, -0.03) == []
 
 
 def test_new_scroll_or_click_stops_inertia():
-    ctrl = make_ctrl(stable_frames=1, scroll_sensitivity=100)
+    ctrl = make_ctrl(gestures={"two_finger": "scroll"}, stable_frames=1, scroll_sensitivity=100)
     run(ctrl, [(Gesture.TWO_FINGER, two(i, -0.03)) for i in range(6)])
     run(ctrl, [(Gesture.PALM, make_hand())] * 2, t0=6 * DT)
     assert ctrl.inertia_active
@@ -301,7 +301,7 @@ def test_new_scroll_or_click_stops_inertia():
 
 
 def test_inertia_continues_when_hand_leaves():
-    ctrl = make_ctrl(stable_frames=1, scroll_sensitivity=100)
+    ctrl = make_ctrl(gestures={"two_finger": "scroll"}, stable_frames=1, scroll_sensitivity=100)
     run(ctrl, [(Gesture.TWO_FINGER, two(i, 0.03)) for i in range(6)])
     after = flat(run(ctrl, [(Gesture.NONE, None)] * 10, t0=6 * DT))
     assert any(isinstance(c, Scroll) and c.steps < 0 for c in after)
@@ -365,3 +365,89 @@ def test_hand_lost_during_pinch_does_not_click():
 def test_middle_pinch_still_right_clicks():
     ctrl = smart_ctrl()
     assert flat(run(ctrl, [(Gesture.PINCH_MIDDLE, make_hand())] * 3)) == [Click("right")]
+
+
+# ---------- 甩動：雙指捲動 / 上一頁下一頁、三指視窗 ----------
+
+from gesture_mouse.controller import FLICK_NAV, FLICK_WINDOWS, Hotkey  # noqa: E402
+
+
+def swipe(ctrl, gesture, fingers, dx, dy, n=5, t0=0.0, settle=3):
+    """先靜止 settle 幀，再每幀移動 (dx, dy)，回傳全部指令。"""
+    frames = [(gesture, make_hand(**fingers))] * settle
+    frames += [(gesture, make_hand(offset=(dx * i, dy * i), **fingers)) for i in range(1, n + 1)]
+    return flat(run(ctrl, frames, t0=t0))
+
+
+TWO = {"index": True, "middle": True}
+THREE = {"index": True, "middle": True, "ring": True}
+
+
+def test_two_finger_flick_up_scrolls_with_inertia():
+    ctrl = make_ctrl(stable_frames=1)
+    cmds = swipe(ctrl, Gesture.TWO_FINGER, TWO, 0, -0.06)        # 每秒 1.8 個畫面高
+    scrolls = [c for c in cmds if isinstance(c, Scroll)]
+    assert scrolls and all(c.steps > 0 for c in scrolls)
+    assert ctrl.inertia_active
+    # 換回手掌後繼續滑一陣子再停
+    after = flat(run(ctrl, [(Gesture.PALM, make_hand())] * 90, t0=1))
+    assert any(isinstance(c, Scroll) and c.steps > 0 for c in after)
+    assert not ctrl.inertia_active
+
+
+def test_two_finger_flick_down_scrolls_down():
+    ctrl = make_ctrl(stable_frames=1)
+    cmds = swipe(ctrl, Gesture.TWO_FINGER, TWO, 0, 0.06)
+    assert [c for c in cmds if isinstance(c, Scroll)][0].steps < 0
+
+
+def test_slow_two_finger_move_does_nothing():
+    ctrl = make_ctrl(stable_frames=1)
+    cmds = swipe(ctrl, Gesture.TWO_FINGER, TWO, 0, -0.005, n=20)
+    assert cmds == []
+    assert not ctrl.inertia_active
+
+
+def test_two_finger_flick_left_right_is_back_forward():
+    ctrl = make_ctrl(stable_frames=1)
+    left = swipe(ctrl, Gesture.TWO_FINGER, TWO, -0.05, 0)
+    assert left.count(FLICK_NAV["left"]) == 1                   # 一次甩動只觸發一次
+    right = swipe(ctrl, Gesture.TWO_FINGER, TWO, 0.05, 0, t0=2)
+    assert FLICK_NAV["right"] in right
+    assert not any(isinstance(c, Scroll) for c in left + right)
+
+
+def test_return_motion_within_cooldown_is_ignored():
+    ctrl = make_ctrl(stable_frames=1)
+    out = swipe(ctrl, Gesture.TWO_FINGER, TWO, 0.05, 0)
+    # 馬上把手收回來（反方向），在冷卻時間內不應觸發上一頁
+    back = [(Gesture.TWO_FINGER, make_hand(offset=(0.25 - 0.05 * i, 0), **TWO)) for i in range(1, 6)]
+    out += flat(run(ctrl, back, t0=8 * DT))
+    hot = [c for c in out if isinstance(c, Hotkey)]
+    assert hot == [FLICK_NAV["right"]]
+
+
+def test_diagonal_flick_is_ignored():
+    ctrl = make_ctrl(stable_frames=1)
+    assert swipe(ctrl, Gesture.TWO_FINGER, TWO, 0.04, -0.04) == []
+
+
+def test_three_finger_flicks():
+    ctrl = make_ctrl(stable_frames=1)
+    assert FLICK_WINDOWS["up"] in swipe(ctrl, Gesture.THREE_FINGER, THREE, 0, -0.05)
+    assert FLICK_WINDOWS["down"] in swipe(ctrl, Gesture.THREE_FINGER, THREE, 0, 0.05, t0=2)
+    assert FLICK_WINDOWS["left"] in swipe(ctrl, Gesture.THREE_FINGER, THREE, -0.05, 0, t0=4)
+    assert FLICK_WINDOWS["right"] in swipe(ctrl, Gesture.THREE_FINGER, THREE, 0.05, 0, t0=6)
+
+
+def test_flicks_do_not_move_cursor():
+    ctrl = make_ctrl("relative", stable_frames=1)
+    cmds = swipe(ctrl, Gesture.THREE_FINGER, THREE, 0.05, 0)
+    assert not any(isinstance(c, (MoveBy, MoveTo)) for c in cmds)
+
+
+def test_flick_ignored_while_paused():
+    ctrl = make_ctrl(stable_frames=1, pause_hold_seconds=0.1)
+    run(ctrl, [(Gesture.FIST, make_hand(index=False))] * 10)
+    assert ctrl.paused
+    assert swipe(ctrl, Gesture.THREE_FINGER, THREE, 0, 0.05, t0=1) == []

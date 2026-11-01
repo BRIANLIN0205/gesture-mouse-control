@@ -1,7 +1,7 @@
 """游標旁的狀態小圓圈。
 
 不開預覽視窗也能知道系統怎麼解讀你的手：
-綠 = 移動、橘 = 捏合判斷中、紅橘 = 拖曳、藍 = 捲動、白 = 抬起（握拳）、
+綠 = 移動、橘 = 捏合判斷中、紅橘 = 拖曳、藍 = 捲動（雙指）、紫 = 視窗手勢（三指）、白 = 抬起（握拳）、
 紅 = 暫停、灰 = 看不到手、黃色閃爍 = 手快離開鏡頭畫面。
 
 視窗是透明、置頂、滑鼠可穿透的，不會擋到點擊。目前只支援 Windows。
@@ -25,6 +25,7 @@ COLORS = {
     "nohand": "#8a8a8a",
     "idle": "#c8c8c8",
     "warning": "#ffd400",
+    "windows": "#b04aff",
 }
 
 _TRANSPARENT = "#ff00ff"
@@ -45,8 +46,10 @@ def overlay_status(ctrl: Controller, hand_present: bool, near_edge: bool) -> str
         return "drag"
     if action in ("click_left", "click_right", "double_click"):
         return "pinch"
-    if action == "scroll" or ctrl.inertia_active:
+    if action in ("scroll", "flick_scroll") or ctrl.inertia_active:
         return "scroll"
+    if action == "flick_windows":
+        return "windows"
     if action == "move_cursor":
         return "move"
     if action == "toggle_pause":
