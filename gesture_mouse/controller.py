@@ -66,6 +66,10 @@ FLICK_NAV = {
     "left": Hotkey(("alt", "left"), "back"),        # 上一頁
     "right": Hotkey(("alt", "right"), "forward"),   # 下一頁
 }
+ARROWS = {
+    "up": Hotkey(("up",), "arrow_up"),
+    "down": Hotkey(("down",), "arrow_down"),
+}
 FLICK_WINDOWS = {
     "up": Hotkey(("win", "tab"), "task_view"),          # 所有視窗
     "down": Hotkey(("win", "d"), "show_desktop"),       # 顯示桌面
@@ -118,6 +122,13 @@ class Controller:
         self._swipe_hist: Deque[Tuple[float, float, float]] = deque()
         self._swipe_block_until = 0.0
         self.last_flick: Optional[str] = None   # 最近一次甩動（給教學 / 狀態顯示用）
+        # 搖桿（中指捏拇指）：起點、目前偏移、開始時間
+        self.joy_active = False
+        self._joy_origin: Optional[Tuple[float, float]] = None
+        self._joy_offset = (0.0, 0.0)
+        self._joy_start = 0.0
+        self._joy_last_t: Optional[float] = None
+        self._joy_rem = 0.0
 
     # ---------- 對外介面 ----------
 
@@ -219,6 +230,12 @@ class Controller:
             self._pause_toggled = False
         elif action in ("flick_scroll", "flick_windows", "move_flick_scroll"):
             self._swipe_hist.clear()
+        elif action == "joystick":
+            self._joy_origin = None
+            self._joy_start = t
+            self._joy_offset = (0.0, 0.0)
+            self._joy_rem = 0.0
+            self.joy_active = True
         if action in _CLICK_ACTIONS:
             self._lock_until = t + self.cfg.control.click_lock_seconds
         if action == "scroll" or action in _CLICK_ACTIONS:
@@ -235,6 +252,10 @@ class Controller:
         # 輕捏後放開（沒移動、沒捏太久）= 左鍵點擊；手直接離開畫面則不算
         if self.smart_state == "pending" and not self._hand_lost:
             cmds.append(Click("left"))
+        if self.joy_active:
+            self.joy_active = False
+            if not self._hand_lost:
+                self._joystick_release(cmds)
         self.smart_state = None
         self._release_held(cmds)
         if self._scroll_ref is not None:
@@ -263,6 +284,8 @@ class Controller:
                     self._on_flick("flick_scroll", direction, speed, cmds)
         elif action == "scroll":
             self._scroll(lm, t, cmds)
+        elif action == "joystick":
+            self._joystick(lm, t, cmds)
         elif action in ("flick_scroll", "flick_windows"):
             direction, speed = self._detect_swipe(lm, t)
             if direction:
@@ -374,6 +397,43 @@ class Controller:
         ):
             return True
         return False
+
+    # ---------- 搖桿：捏住時上下 = 連續捲動，快速放開 = 方向鍵，左右放開 = 翻頁 ----------
+
+    def _joystick(self, lm: Landmarks, t: float, cmds: List[Command]) -> None:
+        c = self.cfg.control
+        p = lm[MIDDLE_MCP]
+        if self._joy_origin is None:
+            self._joy_origin = (p[0], p[1])
+            self._joy_last_t = t
+            return
+        dx, dy = p[0] - self._joy_origin[0], p[1] - self._joy_origin[1]
+        self._joy_offset = (dx, dy)
+        dt = t - (self._joy_last_t if self._joy_last_t is not None else t)
+        self._joy_last_t = t
+        # 只在上下為主、超過死區時捲動；越遠越快
+        if abs(dy) <= c.joystick_deadzone or abs(dx) > abs(dy) or dt <= 0:
+            return
+        span = max(c.joystick_full - c.joystick_deadzone, 1e-6)
+        k = min(1.0, (abs(dy) - c.joystick_deadzone) / span)
+        speed = c.joystick_max_speed * k            # 格 / 秒
+        v = speed if dy < 0 else -speed             # 手往上 = 往上捲
+        if c.scroll_invert:
+            v = -v
+        self._joy_rem += v * dt
+        steps = int(self._joy_rem)
+        if steps:
+            self._joy_rem -= steps
+            cmds.append(Scroll(steps))
+
+    def _joystick_release(self, cmds: List[Command]) -> None:
+        c = self.cfg.control
+        dx, dy = self._joy_offset
+        held = (self._joy_last_t or self._joy_start) - self._joy_start
+        if abs(dx) >= c.joystick_nav_distance and abs(dx) > abs(dy):
+            cmds.append(FLICK_NAV["left" if dx < 0 else "right"])      # 左右放開 = 上一頁 / 下一頁
+        elif held < c.joystick_tap_seconds and abs(dy) > c.joystick_deadzone and abs(dy) >= abs(dx):
+            cmds.append(ARROWS["up" if dy < 0 else "down"])           # 快速放開 = 方向鍵
 
     # ---------- 甩動 ----------
 

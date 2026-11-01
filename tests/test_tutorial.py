@@ -1,7 +1,7 @@
 import numpy as np
 
 from gesture_mouse.config import config_from_dict
-from gesture_mouse.controller import FLICK_NAV, FLICK_WINDOWS, Click, Controller, MoveBy, PauseChanged, Press, Release, Scroll
+from gesture_mouse.controller import ARROWS, FLICK_NAV, FLICK_WINDOWS, Click, Controller, MoveBy, PauseChanged, Press, Release, Scroll
 from gesture_mouse.gestures import Gesture
 from gesture_mouse.tutorial import STEPS, TutorialPanel, TutorialTracker
 
@@ -24,9 +24,9 @@ def test_steps_complete_in_order():
     assert t.feed([Click("right")], Gesture.PINCH_INDEX, False)          # hold_right
     t.feed([Press("left"), MoveBy(30, 0)], Gesture.PINCH_INDEX, False)
     assert t.feed([Release("left")], Gesture.PALM, False)                # drag
-    assert t.feed([Click("right")], Gesture.PINCH_MIDDLE, False)         # middle
     t.feed([Scroll(2)], Gesture.TWO_FINGER, False)
-    assert t.feed([Scroll(-1)], Gesture.TWO_FINGER, False)               # scroll
+    assert t.feed([Scroll(-1)], Gesture.PINCH_MIDDLE, False)             # scroll
+    assert t.feed([ARROWS["up"]], Gesture.PALM, False)                   # arrow
     assert not t.feed([FLICK_WINDOWS["left"]], Gesture.THREE_FINGER, False)
     assert t.feed([FLICK_NAV["left"]], Gesture.PALM, False)              # nav
     assert t.feed([FLICK_WINDOWS["down"]], Gesture.THREE_FINGER, False)  # windows
@@ -72,7 +72,7 @@ def test_default_pinch_actions_satisfy_tutorial():
     for i in range(20):
         step(Gesture.PINCH_INDEX, make_hand(offset=(0.01 * i, 0)))
     step(Gesture.PALM, make_hand(offset=(0.2, 0)))
-    assert t.current.key == "middle"
+    assert t.current.key == "scroll"
 
 
 def test_panel_renders_without_font():

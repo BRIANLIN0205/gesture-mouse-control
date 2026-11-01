@@ -46,7 +46,7 @@ def overlay_status(ctrl: Controller, hand_present: bool, near_edge: bool) -> str
         return "drag"
     if action in ("click_left", "click_right", "double_click"):
         return "pinch"
-    if action in ("scroll", "flick_scroll") or ctrl.inertia_active:
+    if action in ("scroll", "flick_scroll", "joystick") or ctrl.inertia_active:
         return "scroll"
     if action == "flick_windows":
         return "windows"

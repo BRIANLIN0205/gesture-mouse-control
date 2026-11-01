@@ -33,7 +33,8 @@ def test_filter_reset():
 
 def test_default_config():
     cfg = Config()
-    assert cfg.action_for(Gesture.PALM) == "move_flick_scroll"
+    assert cfg.action_for(Gesture.PALM) == "move_cursor"
+    assert cfg.action_for(Gesture.PINCH_MIDDLE) == "joystick"
     assert cfg.action_for(Gesture.POINT) == "none"
     assert cfg.action_for(Gesture.PINCH_INDEX) == "pinch_smart"
     assert cfg.action_for(Gesture.FIST) == "toggle_pause"
@@ -54,7 +55,7 @@ def test_partial_config_keeps_defaults():
     assert cfg.cursor.frame_margin == 0.2
     assert cfg.cursor.pointer_landmark == 5
     assert cfg.gestures["fist"] == "none"
-    assert cfg.gestures["palm"] == "move_flick_scroll"
+    assert cfg.gestures["palm"] == "move_cursor"
 
 
 @pytest.mark.parametrize(

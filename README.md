@@ -9,12 +9,12 @@
 | 手勢 | 動作 |
 | --- | --- |
 | 張開手掌 | 移動游標（相對移動，像觸控板） |
-| 張開手掌，快速往上 / 往下甩 | 捲動：甩得越快捲越多，之後慢慢停下（點擊就停；同方向連甩會越來越快）。一般速度移動只會移游標 |
-| 張開手掌，快速往左 / 往右甩 | 上一頁 / 下一頁（Alt + ← / →） |
 | 食指 + 拇指輕捏一下（其他手指張開或彎曲都可以） | 左鍵點擊（放開時觸發） |
 | 食指 + 拇指捏住並移動 | 拖曳 |
 | 食指 + 拇指捏住不動約 0.6 秒 | 右鍵點擊 |
-| 中指 + 拇指捏合 | 右鍵點擊 |
+| 中指 + 拇指捏住，往上 / 往下移 | 捲動，像搖桿：離捏住的起點越遠捲越快，移回起點就停（捏住時游標不動） |
+| 中指 + 拇指捏住，往上 / 往下一點就放開（0.4 秒內） | 方向鍵上 / 下 |
+| 中指 + 拇指捏住，往左 / 往右移再放開 | 上一頁 / 下一頁（Alt + ← / →），放開時才執行 |
 | 食指 + 中指 + 無名指伸出，往上甩 | 顯示所有視窗（Win + Tab） |
 | 三指往下甩 | 顯示桌面（Win + D） |
 | 三指往左 / 往右甩 | 切換視窗（Alt + Tab） |
@@ -81,9 +81,12 @@ python -m gesture_mouse
 | （絕對模式）手要移很大才能碰到螢幕邊 | 調大 `cursor.frame_margin`（例如 0.2） |
 | 捏合太容易誤觸 | 調小 `detection.pinch_enter` |
 | 捏合很難觸發 | 調大 `detection.pinch_enter`（`pinch_exit` 要一起調大） |
-| 甩一下捲太多 / 太少 | 調小 / 調大 `control.flick_scroll_gain` |
-| 快速移動游標時常誤捲 / 誤翻頁，或甩了沒反應 | 調大 / 調小 `control.palm_swipe_min_speed` |
-| 不要手掌左右甩翻頁 | `control.palm_flick_nav: false` |
+| 搖桿捲動太快 / 太慢 | 調整 `control.joystick_max_speed`；要偏更遠才到最快就調大 `control.joystick_full` |
+| 手稍微動就開始捲 | 調大 `control.joystick_deadzone` |
+| 方向鍵太難 / 太容易觸發 | 調大 / 調小 `control.joystick_tap_seconds` |
+| 翻頁太容易 / 太難觸發 | 調大 / 調小 `control.joystick_nav_distance` |
+| 想要手掌快速甩動捲動 / 翻頁 | `gestures.palm: move_flick_scroll`，門檻用 `control.palm_swipe_min_speed` 調 |
+| 想要中指捏合變回右鍵 | `gestures.pinch_middle: click_right` |
 | 三指甩動常誤觸 / 甩了沒反應 | 調大 / 調小 `control.swipe_min_speed`、`control.swipe_min_distance` |
 | 想改回雙指慢慢移動就捲動（舊做法） | `gestures.two_finger: scroll`，速度用 `control.scroll_sensitivity` 調 |
 | 捲動方向相反 | `control.scroll_invert: true` |

@@ -20,6 +20,7 @@ ACTIONS = {
     "click_left",    # 左鍵單擊
     "click_right",   # 右鍵單擊
     "double_click",  # 左鍵雙擊
+    "joystick",      # 搖桿：捏住時上下偏離起點越遠捲越快；快速放開 = 方向鍵上 / 下；左右偏移放開 = 上一頁 / 下一頁
     "scroll",        # 上下移動手來捲動（慢慢移動就捲，舊做法）
     "flick_scroll",  # 快速上下甩 = 捲動（帶慣性）；左右甩 = 上一頁 / 下一頁
     "flick_windows", # 快速上甩 = 所有視窗、下甩 = 顯示桌面、左右甩 = 切換視窗
@@ -28,10 +29,10 @@ ACTIONS = {
 }
 
 DEFAULT_GESTURE_ACTIONS: Dict[str, str] = {
-    Gesture.PALM.value: "move_flick_scroll",
+    Gesture.PALM.value: "move_cursor",
     Gesture.POINT.value: "none",
     Gesture.PINCH_INDEX.value: "pinch_smart",
-    Gesture.PINCH_MIDDLE.value: "click_right",
+    Gesture.PINCH_MIDDLE.value: "joystick",
     Gesture.TWO_FINGER.value: "none",
     Gesture.THREE_FINGER.value: "flick_windows",
     Gesture.FIST.value: "toggle_pause",
@@ -83,6 +84,13 @@ class ControlConfig:
     scroll_inertia: bool = True      # 捲動手勢結束時若還在快速移動，繼續捲動並慢慢減速
     scroll_inertia_min_speed: float = 15.0  # 結束時速度超過每秒幾格才觸發慣性
     scroll_inertia_friction: float = 3.0    # 慣性減速快慢，越大停得越快
+    # 搖桿（中指捏拇指）
+    joystick_deadzone: float = 0.03  # 離起點不到畫面高的幾成不捲動（避免手抖）
+    joystick_full: float = 0.20      # 偏到畫面高的幾成時達到最高速
+    joystick_max_speed: float = 30.0 # 最高每秒捲幾格
+    joystick_tap_seconds: float = 0.4  # 捏住不到這麼久就放開 = 方向鍵上 / 下
+    joystick_nav_distance: float = 0.08  # 左右偏超過畫面寬的幾成，放開時翻頁
+    # 手掌甩動（palm 設為 move_flick_scroll 時才有作用）
     palm_flick_nav: bool = True      # 手掌快速左右甩 = 上一頁 / 下一頁
     palm_swipe_min_speed: float = 2.0  # 手掌甩動捲動的速度門檻（比雙指 / 三指高，避免快速移動游標被誤判）
     swipe_min_speed: float = 1.2     # 雙指 / 三指甩動判定：手的速度至少每秒幾個畫面高

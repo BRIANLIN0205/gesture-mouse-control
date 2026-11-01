@@ -58,7 +58,7 @@ def test_pinch_index_press_drag_release():
 
 
 def test_pinch_middle_right_click_once():
-    ctrl = make_ctrl(stable_frames=1)
+    ctrl = make_ctrl(gestures={"pinch_middle": "click_right"}, stable_frames=1)
     hand = make_hand()
     outs = run(ctrl, [(Gesture.PINCH_MIDDLE, hand)] * 5)
     assert flat(outs) == [Click("right")]
@@ -255,7 +255,7 @@ def test_cursor_frozen_while_pinch_is_being_confirmed():
 
 def test_right_click_does_not_move():
     cur = {"smoothing_min_cutoff": 1000}
-    ctrl = make_ctrl("relative", cursor=cur, stable_frames=1)
+    ctrl = make_ctrl("relative", gestures={"pinch_middle": "click_right"}, cursor=cur, stable_frames=1)
     run(ctrl, [(Gesture.PALM, moving_hand(i)) for i in range(3)])
     outs = flat(run(ctrl, [(Gesture.PINCH_MIDDLE, moving_hand(i)) for i in range(3, 6)], t0=3 * DT))
     assert outs == [Click("right")]
@@ -363,7 +363,7 @@ def test_hand_lost_during_pinch_does_not_click():
 
 
 def test_middle_pinch_still_right_clicks():
-    ctrl = smart_ctrl()
+    ctrl = smart_ctrl(gestures={"pinch_middle": "click_right"}, )
     assert flat(run(ctrl, [(Gesture.PINCH_MIDDLE, make_hand())] * 3)) == [Click("right")]
 
 
@@ -460,7 +460,7 @@ PALM = {"index": True, "middle": True, "ring": True, "pinky": True}
 
 
 def test_palm_fast_vertical_flick_scrolls():
-    ctrl = make_ctrl("relative", stable_frames=1)
+    ctrl = make_ctrl("relative", gestures={"palm": "move_flick_scroll"}, stable_frames=1)
     cmds = swipe(ctrl, Gesture.PALM, PALM, 0, -0.09)          # 每秒 2.7 個畫面高
     scrolls = [c for c in cmds if isinstance(c, Scroll)]
     assert scrolls and scrolls[0].steps > 0
@@ -469,13 +469,13 @@ def test_palm_fast_vertical_flick_scrolls():
 
 
 def test_palm_normal_move_does_not_scroll():
-    ctrl = make_ctrl("relative", stable_frames=1)
+    ctrl = make_ctrl("relative", gestures={"palm": "move_flick_scroll"}, stable_frames=1)
     cmds = swipe(ctrl, Gesture.PALM, PALM, 0, -0.04, n=8)     # 每秒 1.2 個畫面高：一般移動
     assert not any(isinstance(c, Scroll) for c in cmds)
 
 
 def test_palm_fast_horizontal_flick_navigates():
-    ctrl = make_ctrl("relative", stable_frames=1)
+    ctrl = make_ctrl("relative", gestures={"palm": "move_flick_scroll"}, stable_frames=1)
     left = swipe(ctrl, Gesture.PALM, PALM, -0.09, 0)
     assert [c for c in left if isinstance(c, Hotkey)] == [FLICK_NAV["left"]]
     assert not any(isinstance(c, Scroll) for c in left)
@@ -484,15 +484,96 @@ def test_palm_fast_horizontal_flick_navigates():
 
 
 def test_palm_normal_horizontal_move_does_not_navigate():
-    ctrl = make_ctrl("relative", stable_frames=1)
+    ctrl = make_ctrl("relative", gestures={"palm": "move_flick_scroll"}, stable_frames=1)
     assert not any(isinstance(c, Hotkey) for c in swipe(ctrl, Gesture.PALM, PALM, 0.04, 0, n=8))
 
 
 def test_palm_flick_nav_can_be_disabled():
-    ctrl = make_ctrl("relative", stable_frames=1, palm_flick_nav=False)
+    ctrl = make_ctrl("relative", gestures={"palm": "move_flick_scroll"}, stable_frames=1, palm_flick_nav=False)
     assert not any(isinstance(c, (Scroll, Hotkey)) for c in swipe(ctrl, Gesture.PALM, PALM, 0.1, 0))
 
 
 def test_two_finger_does_nothing_by_default():
     ctrl = make_ctrl(stable_frames=1)
     assert swipe(ctrl, Gesture.TWO_FINGER, TWO, 0, -0.09) == []
+
+
+
+# ---------- 搖桿（中指捏拇指） ----------
+
+from gesture_mouse.controller import ARROWS  # noqa: E402
+
+
+def joy(ctrl, offsets, t0=0.0):
+    """捏住中指，依序把手移到各個偏移位置（相對起點），最後放開回到手掌。回傳 (捏住時指令, 放開時指令)。"""
+    frames = [(Gesture.PINCH_MIDDLE, make_hand(offset=o)) for o in [(0, 0)] + list(offsets)]
+    held = flat(run(ctrl, frames, t0=t0))
+    last = offsets[-1] if offsets else (0, 0)
+    rel = flat(run(ctrl, [(Gesture.PALM, make_hand(offset=last))], t0=t0 + len(frames) * DT))
+    return held, rel
+
+
+def test_joystick_scroll_speed_grows_with_distance():
+    near = make_ctrl(stable_frames=1)
+    far = make_ctrl(stable_frames=1)
+    a, _ = joy(near, [(0, -0.06)] * 30)
+    b, _ = joy(far, [(0, -0.18)] * 30)
+    na = sum(c.steps for c in a if isinstance(c, Scroll))
+    nb = sum(c.steps for c in b if isinstance(c, Scroll))
+    assert 0 < na < nb                      # 往上 = 往上捲，越遠越快
+
+
+def test_joystick_down_scrolls_down_and_deadzone():
+    ctrl = make_ctrl(stable_frames=1)
+    held, _ = joy(ctrl, [(0, 0.1)] * 30)
+    assert sum(c.steps for c in held if isinstance(c, Scroll)) < 0
+    ctrl = make_ctrl(stable_frames=1)
+    held, _ = joy(ctrl, [(0, 0.02)] * 30)   # 在死區內
+    assert not any(isinstance(c, Scroll) for c in held)
+
+
+def test_joystick_quick_release_sends_arrow():
+    ctrl = make_ctrl(stable_frames=1)
+    _, rel = joy(ctrl, [(0, -0.03), (0, -0.06)])          # 0.1 秒內往上偏再放開
+    assert ARROWS["up"] in rel
+    ctrl = make_ctrl(stable_frames=1)
+    _, rel = joy(ctrl, [(0, 0.03), (0, 0.06)])
+    assert ARROWS["down"] in rel
+
+
+def test_joystick_long_hold_release_sends_nothing():
+    ctrl = make_ctrl(stable_frames=1)
+    _, rel = joy(ctrl, [(0, -0.06)] * 20)                   # 超過 0.4 秒
+    assert not any(isinstance(c, Hotkey) for c in rel)
+
+
+def test_joystick_quick_release_without_moving_sends_nothing():
+    ctrl = make_ctrl(stable_frames=1)
+    _, rel = joy(ctrl, [(0, 0)] * 3)
+    assert not any(isinstance(c, (Hotkey, Scroll, Click)) for c in rel)
+
+
+def test_joystick_left_right_navigates_on_release_only():
+    ctrl = make_ctrl(stable_frames=1)
+    held, rel = joy(ctrl, [(-0.1, 0)] * 30)
+    assert not any(isinstance(c, (Hotkey, Scroll)) for c in held)   # 捏著時不翻頁、不捲動
+    assert rel.count(FLICK_NAV["left"]) == 1
+    ctrl = make_ctrl(stable_frames=1)
+    _, rel = joy(ctrl, [(0.1, 0)] * 3)                              # 快速也一樣
+    assert FLICK_NAV["right"] in rel
+
+
+def test_joystick_freezes_cursor():
+    ctrl = make_ctrl("relative", stable_frames=1)
+    run(ctrl, [(Gesture.PALM, make_hand())] * 3)
+    held, _ = joy(ctrl, [(0.05 * i, -0.05 * i) for i in range(1, 6)], t0=0.2)
+    assert not any(isinstance(c, (MoveBy, MoveTo)) for c in held)
+    # 放開後回到手掌，游標從原地繼續（不跳）
+    after = flat(run(ctrl, [(Gesture.PALM, make_hand(offset=(0.25, -0.25)))] * 3, t0=1))
+    assert not any(isinstance(c, MoveBy) and abs(c.dx) > 50 for c in after)
+
+
+def test_joystick_hand_lost_sends_nothing():
+    ctrl = make_ctrl(stable_frames=1)
+    run(ctrl, [(Gesture.PINCH_MIDDLE, make_hand(offset=o)) for o in [(0, 0), (-0.1, 0)]])
+    assert flat(run(ctrl, [(Gesture.NONE, None)], t0=0.1)) == []

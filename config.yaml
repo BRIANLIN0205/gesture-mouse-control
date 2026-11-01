@@ -39,8 +39,15 @@ control:
   scroll_inertia: true      # 甩動捲動後頁面會繼續滑動並慢慢停下
   scroll_inertia_min_speed: 15.0  # 甩動速度超過每秒幾格才觸發慣性
   scroll_inertia_friction: 3.0    # 慣性減速快慢，越大停得越快
-  palm_flick_nav: true      # 手掌快速左右甩 = 上一頁 / 下一頁；常誤觸翻頁就設 false
-  palm_swipe_min_speed: 2.0 # 手掌上下甩多快才算捲動（每秒幾個畫面高）；移動游標常誤捲就調大
+  # 搖桿（中指捏拇指）：捏住時上下偏離起點越遠捲越快；快速放開 = 方向鍵；往左 / 右偏再放開 = 上一頁 / 下一頁
+  joystick_deadzone: 0.03     # 離起點不到畫面高的 3% 不捲動（避免手抖）
+  joystick_full: 0.20         # 偏到畫面高的 20% 時達到最高速
+  joystick_max_speed: 30.0    # 最高每秒捲幾格
+  joystick_tap_seconds: 0.4   # 捏住不到 0.4 秒就放開（且有往上 / 下偏）= 方向鍵上 / 下
+  joystick_nav_distance: 0.08 # 往左 / 右偏超過畫面寬的 8%，放開時翻頁
+  # 手掌甩動（gestures.palm 設成 move_flick_scroll 才有作用）
+  palm_flick_nav: true      # 手掌快速左右甩 = 上一頁 / 下一頁
+  palm_swipe_min_speed: 2.0 # 手掌上下甩多快才算捲動（每秒幾個畫面高）
   swipe_min_speed: 1.2      # 三指甩動要多快才算；常誤觸就調大
   swipe_min_distance: 0.08  # 甩動至少要移動畫面高的幾成；常誤觸就調大
   swipe_cooldown: 0.5       # 一次甩動後多久內不再判定（手收回來不會誤判）
@@ -65,13 +72,13 @@ sound:
 # 手勢：palm（張開手掌）、point（只伸食指）、three_finger（食指+中指+無名指）、pinch_index（食指+拇指捏合）、pinch_middle（中指+拇指捏合）、
 #       two_finger（食指+中指伸出）、fist（握拳）
 # 動作：move_cursor、hold_left、hold_right、click_left、click_right、double_click、
-#       move_flick_scroll、scroll、flick_scroll、flick_windows、toggle_pause、none、
+#       move_flick_scroll、joystick、scroll、flick_scroll、flick_windows、toggle_pause、none、
 #       pinch_smart（輕捏 = 左鍵、捏著移動 = 拖曳、捏住不動 = 右鍵）
 gestures:
-  palm: move_flick_scroll     # 張開手掌移動游標；快速上下甩 = 捲動、左右甩 = 上一頁 / 下一頁
+  palm: move_cursor           # 張開手掌移動游標（改成 move_flick_scroll 可加上快甩捲動 / 翻頁）
   point: none                 # 只伸食指：目前沒有作用
   pinch_index: pinch_smart    # 輕捏 = 左鍵，捏著移動 = 拖曳，捏住不動 0.6 秒 = 右鍵
-  pinch_middle: click_right
+  pinch_middle: joystick      # 搖桿：上下 = 捲動（越遠越快）、快速放開 = 方向鍵、左右放開 = 上一頁 / 下一頁
   two_finger: none            # 目前沒有作用（可改成 flick_scroll：上下甩捲動、左右甩上一頁 / 下一頁）
   three_finger: flick_windows # 上甩 = 所有視窗、下甩 = 顯示桌面、左右甩 = 切換視窗
   fist: toggle_pause          # 短握拳 = 抬起（游標停住，可把手移回中間）；長握拳 = 暫停 / 恢復
