@@ -42,7 +42,8 @@ class HandDetector:
 
             _ensure_model()
             options = vision.HandLandmarkerOptions(
-                base_options=BaseOptions(model_asset_path=str(MODEL_PATH)),
+                # 用 bytes 載入：MediaPipe 的 C++ 層無法開啟含中文等非 ASCII 字元的路徑
+                base_options=BaseOptions(model_asset_buffer=MODEL_PATH.read_bytes()),
                 running_mode=vision.RunningMode.VIDEO,
                 num_hands=1,
                 min_hand_detection_confidence=min_detection_confidence,
@@ -59,6 +60,11 @@ class HandDetector:
                 return None
             return [(p.x, p.y, p.z) for p in result.multi_hand_landmarks[0].landmark]
 
+        # MediaPipe 要求時間戳嚴格遞增；同一毫秒內兩幀會讓它丟例外
+        last = getattr(self, "_last_ts", -1)
+        if timestamp_ms <= last:
+            timestamp_ms = last + 1
+        self._last_ts = timestamp_ms
         image = self._mp.Image(image_format=self._mp.ImageFormat.SRGB, data=rgb_frame)
         result = self._hands.detect_for_video(image, timestamp_ms)
         if not result.hand_landmarks:
