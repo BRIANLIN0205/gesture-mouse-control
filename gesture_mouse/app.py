@@ -42,12 +42,13 @@ def _open_camera(cfg: Config):
     return cap
 
 
-def _draw(frame, lm, gesture: Gesture, paused: bool, fps: float, margin: float) -> None:
+def _draw(frame, lm, gesture: Gesture, paused: bool, fps: float, margin) -> None:
     import cv2
 
     h, w = frame.shape[:2]
-    # 有效區域框（手在框內就能碰到整個螢幕）
-    cv2.rectangle(frame, (int(w * margin), int(h * margin)), (int(w * (1 - margin)), int(h * (1 - margin))), (255, 200, 0), 1)
+    # 有效區域框（絕對模式才有：手在框內就能碰到整個螢幕）
+    if margin is not None:
+        cv2.rectangle(frame, (int(w * margin), int(h * margin)), (int(w * (1 - margin)), int(h * (1 - margin))), (255, 200, 0), 1)
     if lm is not None:
         pts = [(int(p[0] * w), int(p[1] * h)) for p in lm]
         for a, b in CONNECTIONS:
@@ -102,7 +103,8 @@ def run(cfg: Config) -> None:
                 fps = 0.9 * fps + 0.1 * (1 / dt) if fps else 1 / dt
 
             if cfg.show_preview:
-                _draw(frame, lm, controller.active, controller.paused, fps, cfg.cursor.frame_margin)
+                _draw(frame, lm, controller.active, controller.paused, fps,
+                      cfg.cursor.frame_margin if cfg.cursor.mode == "absolute" else None)
                 cv2.imshow("Gesture Mouse", frame)
                 key = cv2.waitKey(1) & 0xFF
                 if key in (ord("q"), 27):

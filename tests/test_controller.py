@@ -1,5 +1,5 @@
 from gesture_mouse.config import Config, config_from_dict
-from gesture_mouse.controller import Click, Controller, MoveTo, Press, Release, Scroll
+from gesture_mouse.controller import Click, Controller, MoveBy, MoveTo, Press, Release, Scroll
 from gesture_mouse.gestures import Gesture
 from tests.handgen import make_hand
 
@@ -25,8 +25,8 @@ def kinds(outs):
     return [type(c).__name__ for c in flat(outs)]
 
 
-def make_ctrl(**control):
-    cfg = config_from_dict({"control": control}) if control else Config()
+def make_ctrl(mode="absolute", cursor=None, **control):
+    cfg = config_from_dict({"control": control, "cursor": {"mode": mode, **(cursor or {})}})
     return Controller(cfg, SCREEN)
 
 
@@ -138,3 +138,69 @@ def test_custom_gesture_mapping():
     assert run(ctrl, [(Gesture.PINCH_MIDDLE, hand)])[0] == [Click("left", 2)]
     outs = run(ctrl, [(Gesture.PINCH_INDEX, hand)] * 3)
     assert flat(outs) == [Click("left")]
+
+
+# ---------- 相對移動 ----------
+
+def moving_hand(i, step=0.01, dy=0.0):
+    return make_hand(offset=(step * i, dy * i))
+
+
+def test_default_mode_is_relative():
+    assert Config().cursor.mode == "relative"
+
+
+def test_relative_first_frame_does_not_jump():
+    ctrl = make_ctrl("relative", stable_frames=1)
+    outs = run(ctrl, [(Gesture.MOVE, make_hand(offset=(0.3, 0.1)))])
+    assert outs[0] == []                     # 第一幀只記錄位置，不移動
+
+
+def test_relative_moves_in_hand_direction():
+    ctrl = make_ctrl("relative", cursor={"smoothing_min_cutoff": 1000}, stable_frames=1)
+    cmds = flat(run(ctrl, [(Gesture.MOVE, moving_hand(i, 0.01, -0.005)) for i in range(10)]))
+    assert cmds and all(isinstance(c, MoveBy) for c in cmds)
+    assert sum(c.dx for c in cmds) > 0      # 手往右 → 游標往右
+    assert sum(c.dy for c in cmds) < 0      # 手往上 → 游標往上
+
+
+def test_relative_still_hand_does_not_drift():
+    ctrl = make_ctrl("relative", stable_frames=1)
+    assert flat(run(ctrl, [(Gesture.MOVE, make_hand())] * 30)) == []
+
+
+def test_relative_acceleration():
+    """同樣的總位移，快速移動時游標走得比慢速遠。"""
+    cur = {"smoothing_min_cutoff": 1000, "relative_accel": 2.0}
+    slow = make_ctrl("relative", cursor=cur, stable_frames=1)
+    fast = make_ctrl("relative", cursor=cur, stable_frames=1)
+    slow_dx = sum(c.dx for c in flat(run(slow, [(Gesture.MOVE, moving_hand(i, 0.002)) for i in range(51)])))
+    fast_dx = sum(c.dx for c in flat(run(fast, [(Gesture.MOVE, moving_hand(i, 0.02)) for i in range(6)])))
+    # 總位移都是 0.1 個鏡頭寬
+    assert fast_dx > slow_dx * 1.5
+
+
+def test_relative_no_accel_is_linear():
+    cur = {"smoothing_min_cutoff": 1000, "relative_accel": 0.0, "relative_gain": 1.0}
+    ctrl = make_ctrl("relative", cursor=cur, stable_frames=1)
+    dx = sum(c.dx for c in flat(run(ctrl, [(Gesture.MOVE, moving_hand(i, 0.01)) for i in range(11)])))
+    assert abs(dx - 0.1 * SCREEN[0]) <= 2
+
+
+def test_relative_reentry_does_not_jump():
+    """移動 → 張開手掌（停住）→ 手移到別處再移動：游標不應跳過去。"""
+    cur = {"smoothing_min_cutoff": 1000}
+    ctrl = make_ctrl("relative", cursor=cur, stable_frames=1)
+    run(ctrl, [(Gesture.MOVE, make_hand())] * 3)
+    run(ctrl, [(Gesture.NONE, make_hand(offset=(-0.3, 0)))] * 3)
+    outs = run(ctrl, [(Gesture.MOVE, make_hand(offset=(-0.3, 0)))] * 2)
+    assert flat(outs) == []
+
+
+def test_relative_drag_keeps_moving():
+    cur = {"smoothing_min_cutoff": 1000}
+    ctrl = make_ctrl("relative", cursor=cur, stable_frames=1)
+    frames = [(Gesture.MOVE, moving_hand(i)) for i in range(3)] + [(Gesture.PINCH_INDEX, moving_hand(i)) for i in range(3, 6)]
+    cmds = flat(run(ctrl, frames))
+    i = cmds.index(Press("left"))
+    assert any(isinstance(c, MoveBy) for c in cmds[i + 1:])

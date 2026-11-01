@@ -51,7 +51,14 @@ class DetectionConfig:
 
 @dataclass
 class CursorConfig:
+    mode: str = "relative"           # relative = 像觸控板（手的位移帶動游標）；absolute = 手的位置直接對應螢幕位置
     pointer_landmark: int = 5        # 5 = 食指根部（捏合時較穩），8 = 食指指尖
+    # 相對模式
+    relative_gain: float = 1.0       # 基本倍率：慢慢移動時，手移過整個鏡頭畫面寬 = 游標移過整個螢幕寬 × 倍率
+    relative_accel: float = 1.5      # 加速度：移動越快倍率越大，0 = 不加速
+    relative_max_gain: float = 4.0   # 加速後的倍率上限
+    relative_deadzone: float = 0.8   # 每幀小於幾像素的移動忽略（消除手靜止時的飄移）
+    # 絕對模式
     frame_margin: float = 0.15       # 畫面四周留白比例，手不用移到鏡頭邊緣就能碰到螢幕邊
     smoothing_min_cutoff: float = 1.0
     smoothing_beta: float = 0.01
@@ -105,6 +112,9 @@ def config_from_dict(data: Optional[Dict[str, Any]]) -> Config:
         if action not in ACTIONS:
             raise ValueError(f"手勢 {name} 的動作 {action} 不存在（可用：{', '.join(sorted(ACTIONS))}）")
     cfg.gestures = gestures
+
+    if cfg.cursor.mode not in ("relative", "absolute"):
+        raise ValueError(f"cursor.mode 只能是 relative 或 absolute，收到 {cfg.cursor.mode}")
 
     if "show_preview" in data:
         cfg.show_preview = bool(data.pop("show_preview"))

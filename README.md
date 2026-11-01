@@ -8,12 +8,12 @@
 
 | 手勢 | 動作 |
 | --- | --- |
-| 只伸出食指 | 移動游標 |
+| 只伸出食指 | 移動游標（相對移動，像觸控板） |
 | 食指 + 拇指捏合 | 左鍵點擊；捏住不放移動 = 拖曳 |
 | 中指 + 拇指捏合 | 右鍵點擊 |
 | 食指 + 中指伸出，上下移動 | 捲動 |
 | 握拳約 0.8 秒 | 暫停 / 恢復控制（暫停時只認握拳） |
-| 張開手掌、或手離開畫面 | 不動作（可以趁這時把手移回中間） |
+| 張開手掌、或手離開畫面 | 游標停住（像把滑鼠拿起來，可以趁這時把手移回中間） |
 
 所有對應都可以在 `config.yaml` 修改。
 
@@ -43,7 +43,8 @@ python -m gesture_mouse
 ```
 
 - 會跳出鏡頭預覽視窗，顯示手部骨架、目前手勢和 FPS。
-- 預覽視窗中的藍色框是有效範圍：手在框內移動就能碰到整個螢幕。
+- 游標預設是相對移動：手移動多少，游標就跟著移動多少，移得快會走得更遠（加速度）。手移到鏡頭邊緣時，張開手掌把手移回中間，再伸食指繼續。
+- 想改回「手的位置直接對應螢幕位置」：`config.yaml` 設 `cursor.mode: absolute`，預覽視窗中的藍框就是有效範圍。
 - 在預覽視窗按 `q` 或 `Esc` 結束。
 - 不要預覽視窗：`python -m gesture_mouse --no-preview`（用 Ctrl+C 結束）。
 - 指定其他設定檔：`python -m gesture_mouse --config my.yaml`。
@@ -56,7 +57,10 @@ python -m gesture_mouse
 | --- | --- |
 | 游標太抖 | 調小 `cursor.smoothing_min_cutoff`（例如 0.5） |
 | 游標跟不上、有延遲 | 調大 `cursor.smoothing_beta`（例如 0.05） |
-| 手要移很大才能碰到螢幕邊 | 調大 `cursor.frame_margin`（例如 0.2） |
+| 游標整體太慢 / 太快 | 調整 `cursor.relative_gain` |
+| 快速移動時游標飛太遠 | 調小 `cursor.relative_accel` 或 `cursor.relative_max_gain` |
+| 手靜止時游標還在飄 | 調大 `cursor.relative_deadzone` |
+| （絕對模式）手要移很大才能碰到螢幕邊 | 調大 `cursor.frame_margin`（例如 0.2） |
 | 捏合太容易誤觸 | 調小 `detection.pinch_enter` |
 | 捏合很難觸發 | 調大 `detection.pinch_enter`（`pinch_exit` 要一起調大） |
 | 捲動太快 / 太慢 | 調整 `control.scroll_sensitivity` |

@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from typing import Iterable, Tuple
 
-from .controller import Click, MoveTo, Press, Release, Scroll
+from .controller import Click, MoveBy, MoveTo, Press, Release, Scroll
 
 
 def enable_dpi_awareness() -> None:
@@ -53,6 +53,8 @@ class PynputMouse:
         for cmd in commands:
             if isinstance(cmd, MoveTo):
                 self._mouse.position = (cmd.x, cmd.y)
+            elif isinstance(cmd, MoveBy):
+                self._mouse.move(cmd.dx, cmd.dy)
             elif isinstance(cmd, Press):
                 self._mouse.press(self._buttons[cmd.button])
             elif isinstance(cmd, Release):

@@ -62,6 +62,7 @@ def test_partial_config_keeps_defaults():
         {"gestures": {"wave": "click_left"}},
         {"gestures": {"move": "fly"}},
         {"unknown_section": {}},
+        {"cursor": {"mode": "teleport"}},
     ],
 )
 def test_invalid_config_raises(data):
