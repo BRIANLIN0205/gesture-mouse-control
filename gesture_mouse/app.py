@@ -67,6 +67,7 @@ def run(cfg: Config) -> None:
 
     from .detector import HandDetector
     from .mouse import PynputMouse, enable_dpi_awareness, get_screen_size
+    from .sounds import SoundPlayer
 
     enable_dpi_awareness()
     screen = get_screen_size()
@@ -76,6 +77,7 @@ def run(cfg: Config) -> None:
     classifier = GestureClassifier(cfg.detection.pinch_enter, cfg.detection.pinch_exit, cfg.detection.extend_ratio)
     controller = Controller(cfg, screen)
     mouse = PynputMouse()
+    sounds = SoundPlayer(cfg.sound)
     cap = _open_camera(cfg)
 
     print("開始控制。張開手掌移動游標，短握拳可把手移回中間，握拳 1.5 秒暫停 / 恢復。", "預覽視窗按 q 或 Esc 結束。" if cfg.show_preview else "按 Ctrl+C 結束。")
@@ -96,7 +98,9 @@ def run(cfg: Config) -> None:
             lm = detector.detect(rgb, int((now - start) * 1000))
             h, w = frame.shape[:2]
             gesture = classifier.classify(lm, aspect=w / h)
-            mouse.execute(controller.update(gesture, lm, now))
+            cmds = controller.update(gesture, lm, now)
+            mouse.execute(cmds)
+            sounds.execute(cmds)
 
             dt = now - last
             last = now

@@ -33,6 +33,12 @@ control:
   scroll_invert: false      # 反轉捲動方向
   pause_hold_seconds: 1.5   # 握拳維持幾秒切換暫停 / 恢復（握不到這麼久 = 抬起，游標停住）
 
+sound:
+  enabled: true     # 暫停 / 恢復時播放提示音
+  volume: 0.5       # 內建提示音音量 0~1
+  pause_file: ""    # 自訂暫停音效（wav 檔路徑），留空 = 內建低音
+  resume_file: ""   # 自訂恢復音效（wav 檔路徑），留空 = 內建高音
+
 # 手勢 → 動作
 # 手勢：palm（張開手掌）、point（只伸食指）、pinch_index（食指+拇指捏合）、pinch_middle（中指+拇指捏合）、
 #       two_finger（食指+中指伸出）、fist（握拳）

@@ -13,7 +13,7 @@
 | 中指 + 拇指捏合 | 右鍵點擊 |
 | 食指 + 中指伸出，上下移動 | 捲動 |
 | 短握拳 | 抬起：游標停住，可以把手移回中間 |
-| 握拳約 1.5 秒 | 暫停 / 恢復控制（暫停時只認握拳） |
+| 握拳約 1.5 秒 | 暫停 / 恢復控制（暫停時只認握拳），會播提示音 |
 | 手離開畫面 | 游標停住 |
 
 所有對應都可以在 `config.yaml` 修改。
@@ -67,6 +67,8 @@ python -m gesture_mouse
 | 捲動太快 / 太慢 | 調整 `control.scroll_sensitivity` |
 | 捲動方向相反 | `control.scroll_invert: true` |
 | 游標跟著指尖而不是食指根部 | `cursor.pointer_landmark: 8` |
+| 關掉暫停 / 恢復提示音 | `sound.enabled: false` |
+| 換成自己的音效 | `sound.pause_file`、`sound.resume_file` 填 wav 檔路徑 |
 
 ## 常見問題
 

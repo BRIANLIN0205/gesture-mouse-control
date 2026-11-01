@@ -48,6 +48,11 @@ class Scroll:
     steps: int  # 正數往上，負數往下
 
 
+@dataclass(frozen=True)
+class PauseChanged:
+    paused: bool  # True = 剛暫停，False = 剛恢復（用來播音效）
+
+
 Command = object
 
 # 這些動作進行中會帶動游標
@@ -188,6 +193,7 @@ class Controller:
                 self.paused = not self.paused
                 if self.paused:
                     self._release_held(cmds)
+                cmds.append(PauseChanged(self.paused))
 
     def _move(self, lm: Landmarks, t: float):
         p = lm[self.cfg.cursor.pointer_landmark]
