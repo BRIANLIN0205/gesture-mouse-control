@@ -24,7 +24,8 @@ GESTURE_LABELS = {
     Gesture.POINT: "POINT",
     Gesture.PINCH_INDEX: "PINCH INDEX",
     Gesture.PINCH_MIDDLE: "PINCH MIDDLE",
-    Gesture.TWO_FINGER: "TWO FINGER",
+    Gesture.TWO_FINGER: "TWO FINGER (FLICK)",
+    Gesture.THREE_FINGER: "THREE FINGER (WINDOWS)",
     Gesture.FIST: "FIST (LIFT / HOLD = PAUSE)",
 }
 
@@ -56,7 +57,7 @@ def _draw(frame, lm, gesture: Gesture, paused: bool, fps: float, margin) -> None
             cv2.line(frame, pts[a], pts[b], (0, 255, 0), 2)
         for p in pts:
             cv2.circle(frame, p, 3, (0, 0, 255), -1)
-    status = "PAUSED" if paused else GESTURE_LABELS[gesture]
+    status = "PAUSED" if paused else GESTURE_LABELS.get(gesture, gesture.value.upper())
     color = (0, 0, 255) if paused else (0, 255, 0)
     cv2.putText(frame, status, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
     cv2.putText(frame, f"{fps:.0f} FPS", (10, h - 12), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
