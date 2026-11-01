@@ -1,0 +1,41 @@
+# 手勢滑鼠控制設定檔
+# 沒寫到的欄位會用預設值。
+
+camera:
+  index: 0          # 鏡頭編號，筆電內建鏡頭通常是 0
+  width: 640
+  height: 480
+  mirror: true      # 左右翻轉畫面，像照鏡子一樣比較直覺
+
+detection:
+  min_detection_confidence: 0.7
+  min_tracking_confidence: 0.6
+  pinch_enter: 0.25   # 指尖距離 < 手大小 × 0.25 算捏合（越小越難觸發）
+  pinch_exit: 0.35    # 指尖距離 > 手大小 × 0.35 才算放開（要比 pinch_enter 大）
+  extend_ratio: 1.1   # 判斷手指伸直的門檻
+
+cursor:
+  pointer_landmark: 5     # 游標跟著哪個關鍵點：5 = 食指根部（捏合時較穩）、8 = 食指指尖
+  frame_margin: 0.15      # 畫面四周留白比例，預覽視窗中的藍框就是有效範圍
+  smoothing_min_cutoff: 1.0  # 越小越平滑，但游標會比較「黏」
+  smoothing_beta: 0.01       # 越大，快速移動時延遲越小
+
+control:
+  stable_frames: 2          # 手勢要連續幾幀一致才生效
+  scroll_sensitivity: 40.0  # 手移動整個畫面高度 = 捲動幾格
+  scroll_invert: false      # 反轉捲動方向
+  pause_hold_seconds: 0.8   # 握拳維持幾秒切換暫停 / 恢復
+
+# 手勢 → 動作
+# 手勢：move（只伸食指）、pinch_index（食指+拇指捏合）、pinch_middle（中指+拇指捏合）、
+#       two_finger（食指+中指伸出）、fist（握拳）
+# 動作：move_cursor、hold_left、hold_right、click_left、click_right、double_click、
+#       scroll、toggle_pause、none
+gestures:
+  move: move_cursor
+  pinch_index: hold_left      # 捏一下 = 左鍵點擊，捏住移動 = 拖曳
+  pinch_middle: click_right
+  two_finger: scroll
+  fist: toggle_pause
+
+show_preview: true
