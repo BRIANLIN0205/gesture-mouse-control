@@ -57,9 +57,9 @@ class PauseChanged:
 Command = object
 
 # 這些動作進行中會帶動游標
-_POINTER_ACTIONS = ("move_cursor", "hold_left", "hold_right")
+_POINTER_ACTIONS = ("move_cursor", "hold_left", "hold_right", "pinch_smart")
 # 這些動作開始時要鎖住游標，避免捏合時手抖把點擊點歪
-_CLICK_ACTIONS = ("hold_left", "hold_right", "click_left", "click_right", "double_click")
+_CLICK_ACTIONS = ("hold_left", "hold_right", "click_left", "click_right", "double_click", "pinch_smart")
 
 
 class Controller:
@@ -89,6 +89,12 @@ class Controller:
         self._inertia_v = 0.0
         self._inertia_rem = 0.0
         self._last_update_t: Optional[float] = None
+        # pinch_smart 狀態：None / "pending"（還不知道是點擊、拖曳或右鍵）/ "drag" / "done"
+        self.smart_state: Optional[str] = None
+        self._smart_start = 0.0
+        self._smart_acc = [0.0, 0.0]
+        self._smart_abs_start: Optional[Tuple[int, int]] = None
+        self._hand_lost = False
 
     # ---------- 對外介面 ----------
 
@@ -96,6 +102,7 @@ class Controller:
         """輸入這一幀的手勢、關鍵點與時間（秒），回傳要執行的滑鼠指令。"""
         cmds: List[Command] = []
 
+        self._hand_lost = lm is None
         if lm is None:
             gesture = Gesture.NONE
             self._reset_pointer()
@@ -170,6 +177,11 @@ class Controller:
             cmds.append(Click("right"))
         elif action == "double_click":
             cmds.append(Click("left", 2))
+        elif action == "pinch_smart":
+            self.smart_state = "pending"
+            self._smart_start = t
+            self._smart_acc = [0.0, 0.0]
+            self._smart_abs_start = None
         elif action == "scroll":
             self._scroll_ref = self._scroll_y(lm) if lm is not None else None
             self._scroll_accum = 0.0
@@ -191,6 +203,10 @@ class Controller:
         self._move_rem = [0.0, 0.0]
 
     def _exit(self, gesture: Gesture, cmds: List[Command]) -> None:
+        # 輕捏後放開（沒移動、沒捏太久）= 左鍵點擊；手直接離開畫面則不算
+        if self.smart_state == "pending" and not self._hand_lost:
+            cmds.append(Click("left"))
+        self.smart_state = None
         self._release_held(cmds)
         if self._scroll_ref is not None:
             self._start_inertia()
@@ -202,7 +218,9 @@ class Controller:
         if lm is None:
             return
 
-        if action in _POINTER_ACTIONS:
+        if action == "pinch_smart":
+            self._during_smart(lm, t, cmds)
+        elif action in _POINTER_ACTIONS:
             cmd = self._move(lm, t)   # 鎖定時仍要更新位置，解鎖後才不會跳
             if cmd is not None and not self._cursor_locked(t):
                 cmds.append(cmd)
@@ -270,6 +288,40 @@ class Controller:
     @staticmethod
     def _scroll_y(lm: Landmarks) -> float:
         return (lm[INDEX_TIP][1] + lm[MIDDLE_TIP][1]) / 2
+
+    def _during_smart(self, lm: Landmarks, t: float, cmds: List[Command]) -> None:
+        cmd = self._move(lm, t)
+        locked = self._cursor_locked(t)
+        c = self.cfg.control
+        if self.smart_state == "drag":
+            if cmd is not None and not locked:
+                cmds.append(cmd)
+            return
+        if self.smart_state != "pending":
+            return  # 已經觸發右鍵，等放開
+        # 還在判斷中：游標不動，只累計手的位移（鎖定期間的抖動不算）
+        dist = 0.0
+        if cmd is not None and not locked:
+            if isinstance(cmd, MoveBy):
+                self._smart_acc[0] += cmd.dx
+                self._smart_acc[1] += cmd.dy
+                dist = math.hypot(*self._smart_acc)
+            elif isinstance(cmd, MoveTo):
+                if self._smart_abs_start is None:
+                    self._smart_abs_start = (cmd.x, cmd.y)
+                dist = math.hypot(cmd.x - self._smart_abs_start[0], cmd.y - self._smart_abs_start[1])
+        if dist >= c.drag_threshold_px:
+            # 開始拖曳：在原地按下左鍵，再補上已經移動的距離
+            self.smart_state = "drag"
+            self._held = "left"
+            cmds.append(Press("left"))
+            if isinstance(cmd, MoveTo):
+                cmds.append(cmd)
+            else:
+                cmds.append(MoveBy(int(self._smart_acc[0]), int(self._smart_acc[1])))
+        elif t - self._smart_start >= c.right_hold_seconds:
+            self.smart_state = "done"
+            cmds.append(Click("right"))
 
     def _cursor_locked(self, t: float) -> bool:
         """點擊開始後一小段時間，或手勢正要切換成點擊 / 從點擊切回來時，游標不動。"""

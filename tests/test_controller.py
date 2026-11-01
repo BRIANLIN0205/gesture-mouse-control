@@ -25,8 +25,8 @@ def kinds(outs):
     return [type(c).__name__ for c in flat(outs)]
 
 
-def make_ctrl(mode="absolute", cursor=None, **control):
-    cfg = config_from_dict({"control": control, "cursor": {"mode": mode, **(cursor or {})}})
+def make_ctrl(mode="absolute", cursor=None, gestures=None, **control):
+    cfg = config_from_dict({"control": control, "cursor": {"mode": mode, **(cursor or {})}, "gestures": gestures or {}})
     return Controller(cfg, SCREEN)
 
 
@@ -40,7 +40,7 @@ def test_move_emits_moveto_after_debounce():
 
 
 def test_single_frame_glitch_is_ignored():
-    ctrl = make_ctrl()
+    ctrl = make_ctrl(gestures={"pinch_index": "hold_left"})
     hand = make_hand()
     run(ctrl, [(Gesture.PALM, hand)] * 3)
     outs = run(ctrl, [(Gesture.PINCH_INDEX, hand), (Gesture.PALM, hand)])
@@ -48,7 +48,7 @@ def test_single_frame_glitch_is_ignored():
 
 
 def test_pinch_index_press_drag_release():
-    ctrl = make_ctrl(stable_frames=1, click_lock_seconds=0)
+    ctrl = make_ctrl(gestures={"pinch_index": "hold_left"}, stable_frames=1, click_lock_seconds=0)
     hand = make_hand()
     outs = run(ctrl, [(Gesture.PALM, hand), (Gesture.PINCH_INDEX, hand), (Gesture.PINCH_INDEX, hand), (Gesture.PALM, hand)])
     assert outs[1][0] == Press("left")
@@ -65,7 +65,7 @@ def test_pinch_middle_right_click_once():
 
 
 def test_lost_hand_releases_button():
-    ctrl = make_ctrl(stable_frames=1)
+    ctrl = make_ctrl(gestures={"pinch_index": "hold_left"}, stable_frames=1)
     hand = make_hand()
     outs = run(ctrl, [(Gesture.PINCH_INDEX, hand), (Gesture.NONE, None)])
     assert outs[0][0] == Press("left")
@@ -73,7 +73,7 @@ def test_lost_hand_releases_button():
 
 
 def test_release_all():
-    ctrl = make_ctrl(stable_frames=1)
+    ctrl = make_ctrl(gestures={"pinch_index": "hold_left"}, stable_frames=1)
     run(ctrl, [(Gesture.PINCH_INDEX, make_hand())])
     assert ctrl.release_all() == [Release("left")]
     assert ctrl.release_all() == []
@@ -199,7 +199,7 @@ def test_relative_reentry_does_not_jump():
 
 def test_relative_drag_keeps_moving():
     cur = {"smoothing_min_cutoff": 1000}
-    ctrl = make_ctrl("relative", cursor=cur, stable_frames=1, click_lock_seconds=0.05)
+    ctrl = make_ctrl("relative", gestures={"pinch_index": "hold_left"}, cursor=cur, stable_frames=1, click_lock_seconds=0.05)
     frames = [(Gesture.PALM, moving_hand(i)) for i in range(3)] + [(Gesture.PINCH_INDEX, moving_hand(i)) for i in range(3, 9)]
     cmds = flat(run(ctrl, frames))
     i = cmds.index(Press("left"))
@@ -232,7 +232,7 @@ def test_default_pause_hold_is_long():
 
 def test_cursor_locked_right_after_pinch():
     cur = {"smoothing_min_cutoff": 1000}
-    ctrl = make_ctrl("relative", cursor=cur, stable_frames=1, click_lock_seconds=0.15)
+    ctrl = make_ctrl("relative", gestures={"pinch_index": "hold_left"}, cursor=cur, stable_frames=1, click_lock_seconds=0.15)
     run(ctrl, [(Gesture.PALM, moving_hand(i)) for i in range(3)])
     # 捏合後 0.1 秒內手還在動：只有 Press，沒有移動
     outs = run(ctrl, [(Gesture.PINCH_INDEX, moving_hand(i)) for i in range(3, 6)], t0=3 * DT)
@@ -305,3 +305,63 @@ def test_inertia_continues_when_hand_leaves():
     run(ctrl, [(Gesture.TWO_FINGER, two(i, 0.03)) for i in range(6)])
     after = flat(run(ctrl, [(Gesture.NONE, None)] * 10, t0=6 * DT))
     assert any(isinstance(c, Scroll) and c.steps < 0 for c in after)
+
+
+# ---------- 食指捏合：輕捏 = 左鍵、捏著移動 = 拖曳、捏住不動 = 右鍵 ----------
+
+def smart_ctrl(**kw):
+    cur = {"smoothing_min_cutoff": 1000}
+    return make_ctrl("relative", cursor=cur, stable_frames=1, click_lock_seconds=0.1, **kw)
+
+
+def test_quick_pinch_is_left_click():
+    ctrl = smart_ctrl()
+    hand = make_hand()
+    run(ctrl, [(Gesture.PALM, hand)] * 2)
+    pinch = flat(run(ctrl, [(Gesture.PINCH_INDEX, hand)] * 5, t0=2 * DT))
+    assert pinch == []                         # 捏著時還不知道要做什麼
+    release = flat(run(ctrl, [(Gesture.PALM, hand)], t0=7 * DT))
+    assert release == [Click("left")]
+
+
+def test_pinch_hold_still_is_right_click():
+    ctrl = smart_ctrl(right_hold_seconds=0.6)
+    hand = make_hand()
+    run(ctrl, [(Gesture.PALM, hand)] * 2)
+    held = flat(run(ctrl, [(Gesture.PINCH_INDEX, hand)] * 30, t0=2 * DT))   # 1 秒
+    assert held == [Click("right")]
+    release = flat(run(ctrl, [(Gesture.PALM, hand)], t0=40 * DT))
+    assert release == []                       # 右鍵後放開不再點左鍵
+
+
+def test_pinch_and_move_is_drag():
+    ctrl = smart_ctrl(drag_threshold_px=25)
+    run(ctrl, [(Gesture.PALM, moving_hand(0))] * 2)
+    cmds = flat(run(ctrl, [(Gesture.PINCH_INDEX, moving_hand(i, 0.01)) for i in range(15)], t0=2 * DT))
+    assert cmds[0] == Press("left")
+    assert isinstance(cmds[1], MoveBy)         # 補上判斷期間已移動的距離
+    assert sum(c.dx for c in cmds if isinstance(c, MoveBy)) > 25
+    assert Click("right") not in cmds
+    end = flat(run(ctrl, [(Gesture.PALM, moving_hand(14, 0.01))], t0=20 * DT))
+    assert end == [Release("left")]
+
+
+def test_jitter_during_lock_does_not_start_drag():
+    ctrl = smart_ctrl(drag_threshold_px=25)
+    run(ctrl, [(Gesture.PALM, make_hand())] * 2)
+    # 捏合瞬間手抖一大下（在鎖定時間內），之後不動
+    frames = [(Gesture.PINCH_INDEX, make_hand(offset=(0.03, 0.02)))] + [(Gesture.PINCH_INDEX, make_hand(offset=(0.03, 0.02)))] * 4
+    cmds = flat(run(ctrl, frames, t0=2 * DT))
+    assert Press("left") not in cmds
+    assert flat(run(ctrl, [(Gesture.PALM, make_hand(offset=(0.03, 0.02)))], t0=8 * DT)) == [Click("left")]
+
+
+def test_hand_lost_during_pinch_does_not_click():
+    ctrl = smart_ctrl()
+    run(ctrl, [(Gesture.PINCH_INDEX, make_hand())] * 3)
+    assert flat(run(ctrl, [(Gesture.NONE, None)], t0=3 * DT)) == []
+
+
+def test_middle_pinch_still_right_clicks():
+    ctrl = smart_ctrl()
+    assert flat(run(ctrl, [(Gesture.PINCH_MIDDLE, make_hand())] * 3)) == [Click("right")]

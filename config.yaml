@@ -33,6 +33,8 @@ control:
   scroll_invert: false      # 反轉捲動方向
   pause_hold_seconds: 1.5   # 握拳維持幾秒切換暫停 / 恢復（握不到這麼久 = 抬起，游標停住）
   click_lock_seconds: 0.15  # 捏合點擊時鎖住游標的時間，避免點歪；0 = 不鎖
+  drag_threshold_px: 25     # 食指捏合後移動超過幾像素才算拖曳
+  right_hold_seconds: 0.6   # 食指捏住不動多久算右鍵
   scroll_inertia: true      # 雙指快速上下一甩後換手勢，頁面會繼續捲動並慢慢停下
   scroll_inertia_min_speed: 15.0  # 甩動速度超過每秒幾格才觸發慣性
   scroll_inertia_friction: 3.0    # 慣性減速快慢，越大停得越快
@@ -47,11 +49,12 @@ sound:
 # 手勢：palm（張開手掌）、point（只伸食指）、pinch_index（食指+拇指捏合）、pinch_middle（中指+拇指捏合）、
 #       two_finger（食指+中指伸出）、fist（握拳）
 # 動作：move_cursor、hold_left、hold_right、click_left、click_right、double_click、
-#       scroll、toggle_pause、none
+#       scroll、toggle_pause、none、
+#       pinch_smart（輕捏 = 左鍵、捏著移動 = 拖曳、捏住不動 = 右鍵）
 gestures:
   palm: move_cursor           # 張開手掌移動游標
   point: none                 # 只伸食指：目前沒有作用
-  pinch_index: hold_left      # 捏一下 = 左鍵點擊，捏住移動 = 拖曳
+  pinch_index: pinch_smart    # 輕捏 = 左鍵，捏著移動 = 拖曳，捏住不動 0.6 秒 = 右鍵
   pinch_middle: click_right
   two_finger: scroll
   fist: toggle_pause          # 短握拳 = 抬起（游標停住，可把手移回中間）；長握拳 = 暫停 / 恢復

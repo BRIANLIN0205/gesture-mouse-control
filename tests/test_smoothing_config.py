@@ -35,7 +35,7 @@ def test_default_config():
     cfg = Config()
     assert cfg.action_for(Gesture.PALM) == "move_cursor"
     assert cfg.action_for(Gesture.POINT) == "none"
-    assert cfg.action_for(Gesture.PINCH_INDEX) == "hold_left"
+    assert cfg.action_for(Gesture.PINCH_INDEX) == "pinch_smart"
     assert cfg.action_for(Gesture.FIST) == "toggle_pause"
     assert cfg.action_for(Gesture.NONE) == "none"
 

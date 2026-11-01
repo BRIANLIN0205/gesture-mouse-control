@@ -13,6 +13,7 @@ from .gestures import Gesture
 # 可以指定給手勢的動作
 ACTIONS = {
     "move_cursor",   # 移動游標
+    "pinch_smart",   # 輕捏 = 左鍵點擊；捏著移動 = 拖曳；捏住不動一段時間 = 右鍵
     "hold_left",     # 按住左鍵（放開手勢才放開；按住時移動就是拖曳）
     "hold_right",    # 按住右鍵
     "click_left",    # 左鍵單擊
@@ -26,7 +27,7 @@ ACTIONS = {
 DEFAULT_GESTURE_ACTIONS: Dict[str, str] = {
     Gesture.PALM.value: "move_cursor",
     Gesture.POINT.value: "none",
-    Gesture.PINCH_INDEX.value: "hold_left",
+    Gesture.PINCH_INDEX.value: "pinch_smart",
     Gesture.PINCH_MIDDLE.value: "click_right",
     Gesture.TWO_FINGER.value: "scroll",
     Gesture.FIST.value: "toggle_pause",
@@ -72,6 +73,8 @@ class ControlConfig:
     scroll_invert: bool = False
     pause_hold_seconds: float = 1.5  # 握拳要維持多久才切換暫停（短握拳 = 抬起，游標停住）
     click_lock_seconds: float = 0.15 # 捏合（點擊）開始後鎖住游標多久，避免捏合時手抖把點擊點歪
+    drag_threshold_px: float = 25.0  # pinch_smart：捏著移動超過幾像素才算拖曳
+    right_hold_seconds: float = 0.6  # pinch_smart：捏住不動多久算右鍵
     scroll_inertia: bool = True      # 捲動手勢結束時若還在快速移動，繼續捲動並慢慢減速
     scroll_inertia_min_speed: float = 15.0  # 結束時速度超過每秒幾格才觸發慣性
     scroll_inertia_friction: float = 3.0    # 慣性減速快慢，越大停得越快
