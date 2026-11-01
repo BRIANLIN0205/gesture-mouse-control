@@ -49,6 +49,7 @@ class DetectionConfig:
     pinch_enter: float = 0.25
     pinch_exit: float = 0.35
     extend_ratio: float = 1.1
+    edge_margin: float = 0.03        # 手離畫面邊緣小於這個比例時提示「快出畫面了」
 
 
 @dataclass
@@ -81,11 +82,21 @@ class ControlConfig:
 
 
 @dataclass
+class OverlayConfig:
+    enabled: bool = True       # 游標旁顯示狀態小圓圈（不開預覽視窗也知道系統怎麼解讀你的手）
+    size: int = 16             # 圓圈直徑（像素）
+    offset: int = 18           # 離游標多遠（往右下）
+
+
+@dataclass
 class SoundConfig:
     enabled: bool = True
     volume: float = 0.5        # 內建提示音音量 0~1
     pause_file: str = ""       # 自訂暫停音效 wav 路徑，留空 = 內建提示音（低音）
     resume_file: str = ""      # 自訂恢復音效 wav 路徑，留空 = 內建提示音（高音）
+    click_enabled: bool = True # 點擊 / 開始拖曳時播放輕微的「喀」聲
+    click_volume: float = 0.25
+    click_file: str = ""       # 自訂點擊音效 wav 路徑，留空 = 內建
 
 
 @dataclass
@@ -95,6 +106,7 @@ class Config:
     cursor: CursorConfig = field(default_factory=CursorConfig)
     control: ControlConfig = field(default_factory=ControlConfig)
     sound: SoundConfig = field(default_factory=SoundConfig)
+    overlay: OverlayConfig = field(default_factory=OverlayConfig)
     gestures: Dict[str, str] = field(default_factory=lambda: dict(DEFAULT_GESTURE_ACTIONS))
     show_preview: bool = True
 
@@ -119,6 +131,7 @@ def config_from_dict(data: Optional[Dict[str, Any]]) -> Config:
         cursor=_fill(CursorConfig, data.pop("cursor", None), "cursor"),
         control=_fill(ControlConfig, data.pop("control", None), "control"),
         sound=_fill(SoundConfig, data.pop("sound", None), "sound"),
+        overlay=_fill(OverlayConfig, data.pop("overlay", None), "overlay"),
     )
 
     gestures = dict(DEFAULT_GESTURE_ACTIONS)

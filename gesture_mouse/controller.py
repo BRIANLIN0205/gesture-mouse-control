@@ -123,6 +123,10 @@ class Controller:
         self._last_update_t = t
         return cmds
 
+    def current_action(self) -> str:
+        """目前生效手勢對應的動作（暫停時只有 toggle_pause 有效）。"""
+        return self._action(self.active)
+
     @property
     def inertia_active(self) -> bool:
         return self._inertia_v != 0.0

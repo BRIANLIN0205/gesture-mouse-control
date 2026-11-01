@@ -56,3 +56,8 @@ def is_finger_extended(lm: Landmarks, finger: str, aspect: float = 1.0, ratio: f
     pip, tip = FINGERS[finger]
     wrist = lm[WRIST]
     return distance(wrist, lm[tip], aspect) > distance(wrist, lm[pip], aspect) * ratio
+
+
+def near_edge(lm: Landmarks, margin: float = 0.03) -> bool:
+    """手的任何關鍵點太靠近鏡頭畫面邊緣（快要離開畫面）。"""
+    return any(p[0] < margin or p[0] > 1 - margin or p[1] < margin or p[1] > 1 - margin for p in lm)

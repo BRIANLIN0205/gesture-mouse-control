@@ -9,14 +9,25 @@
 | 手勢 | 動作 |
 | --- | --- |
 | 張開手掌 | 移動游標（相對移動，像觸控板） |
-| 食指 + 拇指捏合（其他手指張開或彎曲都可以） | 左鍵點擊；捏住不放移動 = 拖曳（捏合瞬間游標會鎖住約 0.15 秒，避免點歪） |
+| 食指 + 拇指輕捏一下（其他手指張開或彎曲都可以） | 左鍵點擊（放開時觸發） |
+| 食指 + 拇指捏住並移動 | 拖曳 |
+| 食指 + 拇指捏住不動約 0.6 秒 | 右鍵點擊 |
 | 中指 + 拇指捏合 | 右鍵點擊 |
 | 食指 + 中指伸出，上下移動 | 捲動；快速一甩後換手勢，頁面會繼續滑動並慢慢停下（再捲動或點擊就停） |
 | 短握拳 | 抬起：游標停住，可以把手移回中間 |
 | 握拳約 1.5 秒 | 暫停 / 恢復控制（暫停時只認握拳），會播提示音 |
 | 手離開畫面 | 游標停住 |
 
-所有對應都可以在 `config.yaml` 修改。
+捏合瞬間游標會鎖住約 0.15 秒，避免捏合時手抖把點擊點歪。所有對應都可以在 `config.yaml` 修改。
+
+### 回饋
+
+- **游標旁的小圓圈**：不開預覽視窗也知道系統怎麼解讀你的手。綠 = 移動、橘 = 捏合判斷中、紅橘 = 拖曳、藍 = 捲動、白 = 抬起（握拳）、紅 = 暫停、灰 = 看不到手、**黃色閃爍 = 手快離開鏡頭畫面**（預覽視窗也會出現黃框）。
+- **聲音**：點擊有輕微「喀」聲（右鍵音較低），暫停 / 恢復有高低兩聲提示音。
+
+### 第一次使用：手勢教學
+
+第一次執行會先進入教學，畫面右邊依序列出每個手勢，做對就打勾；練習時不會真的操作滑鼠。按 `s` 可跳過。之後想再練習：`python -m gesture_mouse --tutorial`。
 
 ## 在 Windows 安裝
 
@@ -50,6 +61,7 @@ python -m gesture_mouse
 - 在預覽視窗按 `q` 或 `Esc` 結束。
 - 不要預覽視窗：`python -m gesture_mouse --no-preview`（用 Ctrl+C 結束）。
 - 指定其他設定檔：`python -m gesture_mouse --config my.yaml`。
+- 第一次也不要教學：`python -m gesture_mouse --skip-tutorial`。
 
 第一次執行時，如果安裝的 MediaPipe 是新版（沒有舊的 `solutions` API），程式會自動下載手部模型（約 8 MB）到 `models/`。
 
@@ -70,6 +82,12 @@ python -m gesture_mouse
 | 點擊時游標還是會偏 / 拖曳開始太慢 | 調大 / 調小 `control.click_lock_seconds` |
 | 甩動後滑太久 / 太短 | 調大 / 調小 `control.scroll_inertia_friction`；不要慣性設 `control.scroll_inertia: false` |
 | 游標跟著指尖而不是食指根部 | `cursor.pointer_landmark: 8` |
+| 輕捏常被當成拖曳 / 拖曳很難開始 | 調大 / 調小 `control.drag_threshold_px` |
+| 右鍵太容易 / 太難觸發 | 調大 / 調小 `control.right_hold_seconds` |
+| 想要捏到就按下（舊行為） | `gestures.pinch_index: hold_left` |
+| 關掉點擊音 | `sound.click_enabled: false` |
+| 關掉游標旁小圓圈 | `overlay.enabled: false` |
+| 出畫面提示太敏感 | 調小 `detection.edge_margin` |
 | 關掉暫停 / 恢復提示音 | `sound.enabled: false` |
 | 換成自己的音效 | `sound.pause_file`、`sound.resume_file` 填 wav 檔路徑 |
 
@@ -98,6 +116,9 @@ gesture_mouse/
   gestures.py    規則式手勢判斷
   controller.py  手勢 → 滑鼠指令（防抖、拖曳、捲動、暫停）
   smoothing.py   One Euro Filter 游標平滑
+  sounds.py      點擊、暫停 / 恢復音效
+  overlay.py     游標旁的狀態小圓圈
+  tutorial.py    第一次使用的手勢教學
   mouse.py       pynput 送出滑鼠指令、Windows DPI 處理
   config.py      讀取 config.yaml
 config.yaml      手勢對應與參數

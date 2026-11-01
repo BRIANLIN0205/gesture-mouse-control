@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
 from .config import SoundConfig
-from .controller import PauseChanged
+from .controller import Click, PauseChanged, Press
 
 SAMPLE_RATE = 22050
 
@@ -58,13 +58,19 @@ class SoundPlayer:
             print("音效目前只支援 Windows，已略過")
         self.pause_wav = _load(cfg.pause_file, make_tone_wav([880, 587], volume=cfg.volume))
         self.resume_wav = _load(cfg.resume_file, make_tone_wav([587, 880], volume=cfg.volume))
+        self.click_enabled = cfg.click_enabled
+        self.left_wav = _load(cfg.click_file, make_tone_wav([1760], note_ms=25, volume=cfg.click_volume))
+        # 右鍵用較低的音，聽得出差別；自訂檔案時左右鍵共用
+        self.right_wav = self.left_wav if cfg.click_file else make_tone_wav([1175], note_ms=35, volume=cfg.click_volume)
 
     def sound_for(self, commands: Iterable[object]) -> Optional[bytes]:
         """從這一幀的指令找出要播的音效（沒有就回傳 None）。"""
         wav = None
         for cmd in commands:
             if isinstance(cmd, PauseChanged):
-                wav = self.pause_wav if cmd.paused else self.resume_wav
+                return self.pause_wav if cmd.paused else self.resume_wav   # 暫停音優先
+            if self.click_enabled and isinstance(cmd, (Click, Press)) and wav is None:
+                wav = self.right_wav if cmd.button == "right" else self.left_wav
         return wav
 
     def execute(self, commands: Iterable[object]) -> None:

@@ -3,3 +3,4 @@ opencv-python>=4.8
 pynput>=1.7.6
 PyYAML>=6.0
 numpy
+Pillow>=9

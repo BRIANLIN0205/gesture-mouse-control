@@ -49,6 +49,11 @@ class PynputMouse:
         self._mouse = Controller()
         self._buttons = {"left": Button.left, "right": Button.right}
 
+    @property
+    def position(self) -> Tuple[int, int]:
+        x, y = self._mouse.position
+        return int(x), int(y)
+
     def execute(self, commands: Iterable[object]) -> None:
         for cmd in commands:
             if isinstance(cmd, MoveTo):

@@ -53,3 +53,23 @@ def test_sound_config_section():
     cfg = config_from_dict({"sound": {"enabled": False}})
     assert cfg.sound.enabled is False
     assert cfg.sound.volume == 0.5
+
+
+def test_click_sounds():
+    from gesture_mouse.controller import Click, Press
+
+    p = SoundPlayer(SoundConfig())
+    assert p.sound_for([Click("left")]) == p.left_wav
+    assert p.sound_for([Press("left")]) == p.left_wav
+    assert p.sound_for([Click("right")]) == p.right_wav
+    assert p.left_wav != p.right_wav
+    # 同一幀有暫停 → 播暫停音
+    assert p.sound_for([Click("left"), PauseChanged(True)]) == p.pause_wav
+
+
+def test_click_sound_can_be_disabled():
+    from gesture_mouse.controller import Click
+
+    p = SoundPlayer(SoundConfig(click_enabled=False))
+    assert p.sound_for([Click("left")]) is None
+    assert p.sound_for([PauseChanged(False)]) == p.resume_wav
