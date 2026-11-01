@@ -48,7 +48,7 @@ def test_single_frame_glitch_is_ignored():
 
 
 def test_pinch_index_press_drag_release():
-    ctrl = make_ctrl(stable_frames=1)
+    ctrl = make_ctrl(stable_frames=1, click_lock_seconds=0)
     hand = make_hand()
     outs = run(ctrl, [(Gesture.PALM, hand), (Gesture.PINCH_INDEX, hand), (Gesture.PINCH_INDEX, hand), (Gesture.PALM, hand)])
     assert outs[1][0] == Press("left")
@@ -199,8 +199,8 @@ def test_relative_reentry_does_not_jump():
 
 def test_relative_drag_keeps_moving():
     cur = {"smoothing_min_cutoff": 1000}
-    ctrl = make_ctrl("relative", cursor=cur, stable_frames=1)
-    frames = [(Gesture.PALM, moving_hand(i)) for i in range(3)] + [(Gesture.PINCH_INDEX, moving_hand(i)) for i in range(3, 6)]
+    ctrl = make_ctrl("relative", cursor=cur, stable_frames=1, click_lock_seconds=0.05)
+    frames = [(Gesture.PALM, moving_hand(i)) for i in range(3)] + [(Gesture.PINCH_INDEX, moving_hand(i)) for i in range(3, 9)]
     cmds = flat(run(ctrl, frames))
     i = cmds.index(Press("left"))
     assert any(isinstance(c, MoveBy) for c in cmds[i + 1:])
@@ -226,3 +226,82 @@ def test_point_does_nothing_by_default():
 
 def test_default_pause_hold_is_long():
     assert Config().control.pause_hold_seconds == 1.5
+
+
+# ---------- 捏合瞬間鎖住游標 ----------
+
+def test_cursor_locked_right_after_pinch():
+    cur = {"smoothing_min_cutoff": 1000}
+    ctrl = make_ctrl("relative", cursor=cur, stable_frames=1, click_lock_seconds=0.15)
+    run(ctrl, [(Gesture.PALM, moving_hand(i)) for i in range(3)])
+    # 捏合後 0.1 秒內手還在動：只有 Press，沒有移動
+    outs = run(ctrl, [(Gesture.PINCH_INDEX, moving_hand(i)) for i in range(3, 6)], t0=3 * DT)
+    cmds = flat(outs)
+    assert cmds == [Press("left")]
+    # 超過鎖定時間後繼續移動 = 拖曳，而且不會把鎖定期間的位移一次補上（不跳）
+    later = flat(run(ctrl, [(Gesture.PINCH_INDEX, moving_hand(i)) for i in range(6, 10)], t0=6 * DT + 0.1))
+    moves = [c for c in later if isinstance(c, MoveBy)]
+    assert moves and max(abs(m.dx) for m in moves) < 0.05 * SCREEN[0]
+
+
+def test_cursor_frozen_while_pinch_is_being_confirmed():
+    """手勢正從移動切到捏合（還在確認中）那一幀，游標不動。"""
+    cur = {"smoothing_min_cutoff": 1000}
+    ctrl = make_ctrl("relative", cursor=cur, stable_frames=2)
+    run(ctrl, [(Gesture.PALM, moving_hand(i)) for i in range(4)])
+    outs = run(ctrl, [(Gesture.PINCH_INDEX, moving_hand(4))], t0=4 * DT)
+    assert flat(outs) == []
+
+
+def test_right_click_does_not_move():
+    cur = {"smoothing_min_cutoff": 1000}
+    ctrl = make_ctrl("relative", cursor=cur, stable_frames=1)
+    run(ctrl, [(Gesture.PALM, moving_hand(i)) for i in range(3)])
+    outs = flat(run(ctrl, [(Gesture.PINCH_MIDDLE, moving_hand(i)) for i in range(3, 6)], t0=3 * DT))
+    assert outs == [Click("right")]
+
+
+# ---------- 捲動慣性 ----------
+
+def two(i, dy):
+    return make_hand(index=True, middle=True, offset=(0, dy * i))
+
+
+def flick(ctrl, dy, n=6):
+    """雙指快速移動 n 幀，然後換成張開手掌（靜止）。回傳換手勢後的捲動格數。"""
+    run(ctrl, [(Gesture.TWO_FINGER, two(i, dy)) for i in range(n)])
+    after = flat(run(ctrl, [(Gesture.PALM, make_hand())] * 60, t0=n * DT))
+    return [c for c in after if isinstance(c, Scroll)]
+
+
+def test_fast_flick_keeps_scrolling_and_slows_down():
+    ctrl = make_ctrl(stable_frames=1, scroll_sensitivity=100)
+    scrolls = flick(ctrl, -0.03)      # 手往上甩 → 往上捲
+    assert scrolls and all(s.steps > 0 for s in scrolls)
+    assert not ctrl.inertia_active   # 2 秒內會停下來
+
+
+def test_slow_scroll_has_no_inertia():
+    ctrl = make_ctrl(stable_frames=1, scroll_sensitivity=100)
+    assert flick(ctrl, -0.001) == []
+
+
+def test_inertia_can_be_disabled():
+    ctrl = make_ctrl(stable_frames=1, scroll_sensitivity=100, scroll_inertia=False)
+    assert flick(ctrl, -0.03) == []
+
+
+def test_new_scroll_or_click_stops_inertia():
+    ctrl = make_ctrl(stable_frames=1, scroll_sensitivity=100)
+    run(ctrl, [(Gesture.TWO_FINGER, two(i, -0.03)) for i in range(6)])
+    run(ctrl, [(Gesture.PALM, make_hand())] * 2, t0=6 * DT)
+    assert ctrl.inertia_active
+    run(ctrl, [(Gesture.PINCH_INDEX, make_hand())], t0=8 * DT)
+    assert not ctrl.inertia_active
+
+
+def test_inertia_continues_when_hand_leaves():
+    ctrl = make_ctrl(stable_frames=1, scroll_sensitivity=100)
+    run(ctrl, [(Gesture.TWO_FINGER, two(i, 0.03)) for i in range(6)])
+    after = flat(run(ctrl, [(Gesture.NONE, None)] * 10, t0=6 * DT))
+    assert any(isinstance(c, Scroll) and c.steps < 0 for c in after)

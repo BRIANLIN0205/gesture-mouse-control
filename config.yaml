@@ -32,6 +32,10 @@ control:
   scroll_sensitivity: 40.0  # 手移動整個畫面高度 = 捲動幾格
   scroll_invert: false      # 反轉捲動方向
   pause_hold_seconds: 1.5   # 握拳維持幾秒切換暫停 / 恢復（握不到這麼久 = 抬起，游標停住）
+  click_lock_seconds: 0.15  # 捏合點擊時鎖住游標的時間，避免點歪；0 = 不鎖
+  scroll_inertia: true      # 雙指快速上下一甩後換手勢，頁面會繼續捲動並慢慢停下
+  scroll_inertia_min_speed: 15.0  # 甩動速度超過每秒幾格才觸發慣性
+  scroll_inertia_friction: 3.0    # 慣性減速快慢，越大停得越快
 
 sound:
   enabled: true     # 暫停 / 恢復時播放提示音

@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
@@ -57,6 +58,8 @@ Command = object
 
 # 這些動作進行中會帶動游標
 _POINTER_ACTIONS = ("move_cursor", "hold_left", "hold_right")
+# 這些動作開始時要鎖住游標，避免捏合時手抖把點擊點歪
+_CLICK_ACTIONS = ("hold_left", "hold_right", "click_left", "click_right", "double_click")
 
 
 class Controller:
@@ -78,6 +81,14 @@ class Controller:
         self._last_ptr: Optional[Tuple[float, float]] = None
         self._last_t: Optional[float] = None
         self._move_rem = [0.0, 0.0]
+        # 點擊鎖定
+        self._lock_until = 0.0
+        # 捲動速度與慣性（單位：格 / 秒）
+        self._scroll_v = 0.0
+        self._scroll_last_t: Optional[float] = None
+        self._inertia_v = 0.0
+        self._inertia_rem = 0.0
+        self._last_update_t: Optional[float] = None
 
     # ---------- 對外介面 ----------
 
@@ -101,7 +112,13 @@ class Controller:
             self._enter(stable, lm, t, cmds)
 
         self._during(stable, lm, t, cmds)
+        self._run_inertia(t, cmds)
+        self._last_update_t = t
         return cmds
+
+    @property
+    def inertia_active(self) -> bool:
+        return self._inertia_v != 0.0
 
     def release_all(self) -> List[Command]:
         """程式結束時呼叫，確保不會留下按住的按鍵。"""
@@ -156,6 +173,12 @@ class Controller:
         elif action == "scroll":
             self._scroll_ref = self._scroll_y(lm) if lm is not None else None
             self._scroll_accum = 0.0
+            self._scroll_v = 0.0
+            self._scroll_last_t = t
+        if action in _CLICK_ACTIONS:
+            self._lock_until = t + self.cfg.control.click_lock_seconds
+        if action in ("scroll",) or action in _CLICK_ACTIONS:
+            self._stop_inertia()   # 再次捲動或點擊時停止慣性（像觸控板手指一碰就停）
         elif action == "toggle_pause":
             self._pause_start = t
             self._pause_toggled = False
@@ -169,6 +192,8 @@ class Controller:
 
     def _exit(self, gesture: Gesture, cmds: List[Command]) -> None:
         self._release_held(cmds)
+        if self._scroll_ref is not None:
+            self._start_inertia()
         self._scroll_ref = None
         self._pause_start = None
 
@@ -178,11 +203,11 @@ class Controller:
             return
 
         if action in _POINTER_ACTIONS:
-            cmd = self._move(lm, t)
-            if cmd is not None:
+            cmd = self._move(lm, t)   # 鎖定時仍要更新位置，解鎖後才不會跳
+            if cmd is not None and not self._cursor_locked(t):
                 cmds.append(cmd)
         elif action == "scroll":
-            self._scroll(lm, cmds)
+            self._scroll(lm, t, cmds)
         elif action == "toggle_pause":
             if (
                 self._pause_start is not None
@@ -246,16 +271,63 @@ class Controller:
     def _scroll_y(lm: Landmarks) -> float:
         return (lm[INDEX_TIP][1] + lm[MIDDLE_TIP][1]) / 2
 
-    def _scroll(self, lm: Landmarks, cmds: List[Command]) -> None:
+    def _cursor_locked(self, t: float) -> bool:
+        """點擊開始後一小段時間，或手勢正要切換成點擊 / 從點擊切回來時，游標不動。"""
+        if t < self._lock_until:
+            return True
+        pending = self._candidate != self.active and self._candidate_count > 0
+        if pending and (
+            self._action(self._candidate) in _CLICK_ACTIONS or self._action(self.active) in _CLICK_ACTIONS
+        ):
+            return True
+        return False
+
+    # ---------- 捲動慣性 ----------
+
+    def _start_inertia(self) -> None:
+        c = self.cfg.control
+        if c.scroll_inertia and abs(self._scroll_v) >= c.scroll_inertia_min_speed:
+            self._inertia_v = self._scroll_v
+            self._inertia_rem = 0.0
+
+    def _stop_inertia(self) -> None:
+        self._inertia_v = 0.0
+        self._inertia_rem = 0.0
+
+    def _run_inertia(self, t: float, cmds: List[Command]) -> None:
+        if self._inertia_v == 0.0 or self._last_update_t is None:
+            return
+        if self.paused:
+            self._stop_inertia()
+            return
+        dt = max(t - self._last_update_t, 0.0)
+        self._inertia_v *= math.exp(-self.cfg.control.scroll_inertia_friction * dt)
+        if abs(self._inertia_v) < 2.0:
+            self._stop_inertia()
+            return
+        self._inertia_rem += self._inertia_v * dt
+        steps = int(self._inertia_rem)
+        if steps:
+            self._inertia_rem -= steps
+            cmds.append(Scroll(steps))
+
+    def _scroll(self, lm: Landmarks, t: float, cmds: List[Command]) -> None:
         y = self._scroll_y(lm)
         if self._scroll_ref is None:
             self._scroll_ref = y
+            self._scroll_last_t = t
             return
         # 手往上（y 變小）= 往上捲
         delta = (self._scroll_ref - y) * self.cfg.control.scroll_sensitivity
         if self.cfg.control.scroll_invert:
             delta = -delta
         self._scroll_ref = y
+        # 速度（格 / 秒），約 0.1 秒的平滑，用來決定甩動慣性
+        if self._scroll_last_t is not None and t > self._scroll_last_t:
+            dt = t - self._scroll_last_t
+            k = min(1.0, dt / 0.1)
+            self._scroll_v += (delta / dt - self._scroll_v) * k
+        self._scroll_last_t = t
         self._scroll_accum += delta
         steps = int(self._scroll_accum)
         if steps:

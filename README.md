@@ -9,9 +9,9 @@
 | 手勢 | 動作 |
 | --- | --- |
 | 張開手掌 | 移動游標（相對移動，像觸控板） |
-| 食指 + 拇指捏合（其他手指張開或彎曲都可以） | 左鍵點擊；捏住不放移動 = 拖曳 |
+| 食指 + 拇指捏合（其他手指張開或彎曲都可以） | 左鍵點擊；捏住不放移動 = 拖曳（捏合瞬間游標會鎖住約 0.15 秒，避免點歪） |
 | 中指 + 拇指捏合 | 右鍵點擊 |
-| 食指 + 中指伸出，上下移動 | 捲動 |
+| 食指 + 中指伸出，上下移動 | 捲動；快速一甩後換手勢，頁面會繼續滑動並慢慢停下（再捲動或點擊就停） |
 | 短握拳 | 抬起：游標停住，可以把手移回中間 |
 | 握拳約 1.5 秒 | 暫停 / 恢復控制（暫停時只認握拳），會播提示音 |
 | 手離開畫面 | 游標停住 |
@@ -45,6 +45,7 @@ python -m gesture_mouse
 
 - 會跳出鏡頭預覽視窗，顯示手部骨架、目前手勢和 FPS。
 - 游標預設是相對移動：手移動多少，游標就跟著移動多少，移得快會走得更遠（加速度）。手移到鏡頭邊緣時，握拳把手移回中間（1.5 秒內），再張開手掌繼續。
+- 手不用舉高：在鏡頭畫面下半部（靠近鍵盤）小幅移動就能走遍螢幕，比較不累。只要手還在鏡頭拍得到的範圍內就好。
 - 想改回「手的位置直接對應螢幕位置」：`config.yaml` 設 `cursor.mode: absolute`，預覽視窗中的藍框就是有效範圍。
 - 在預覽視窗按 `q` 或 `Esc` 結束。
 - 不要預覽視窗：`python -m gesture_mouse --no-preview`（用 Ctrl+C 結束）。
@@ -66,6 +67,8 @@ python -m gesture_mouse
 | 捏合很難觸發 | 調大 `detection.pinch_enter`（`pinch_exit` 要一起調大） |
 | 捲動太快 / 太慢 | 調整 `control.scroll_sensitivity` |
 | 捲動方向相反 | `control.scroll_invert: true` |
+| 點擊時游標還是會偏 / 拖曳開始太慢 | 調大 / 調小 `control.click_lock_seconds` |
+| 甩動後滑太久 / 太短 | 調大 / 調小 `control.scroll_inertia_friction`；不要慣性設 `control.scroll_inertia: false` |
 | 游標跟著指尖而不是食指根部 | `cursor.pointer_landmark: 8` |
 | 關掉暫停 / 恢復提示音 | `sound.enabled: false` |
 | 換成自己的音效 | `sound.pause_file`、`sound.resume_file` 填 wav 檔路徑 |

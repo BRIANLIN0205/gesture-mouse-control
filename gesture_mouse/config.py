@@ -71,6 +71,10 @@ class ControlConfig:
     scroll_sensitivity: float = 40.0 # 手移動整個畫面高度 = 捲動幾格
     scroll_invert: bool = False
     pause_hold_seconds: float = 1.5  # 握拳要維持多久才切換暫停（短握拳 = 抬起，游標停住）
+    click_lock_seconds: float = 0.15 # 捏合（點擊）開始後鎖住游標多久，避免捏合時手抖把點擊點歪
+    scroll_inertia: bool = True      # 捲動手勢結束時若還在快速移動，繼續捲動並慢慢減速
+    scroll_inertia_min_speed: float = 15.0  # 結束時速度超過每秒幾格才觸發慣性
+    scroll_inertia_friction: float = 3.0    # 慣性減速快慢，越大停得越快
 
 
 @dataclass
