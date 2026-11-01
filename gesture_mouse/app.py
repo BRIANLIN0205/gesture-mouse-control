@@ -20,11 +20,12 @@ DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "config.yaml"
 
 GESTURE_LABELS = {
     Gesture.NONE: "-",
-    Gesture.MOVE: "MOVE",
+    Gesture.PALM: "PALM (MOVE)",
+    Gesture.POINT: "POINT",
     Gesture.PINCH_INDEX: "PINCH INDEX",
     Gesture.PINCH_MIDDLE: "PINCH MIDDLE",
     Gesture.TWO_FINGER: "TWO FINGER",
-    Gesture.FIST: "FIST",
+    Gesture.FIST: "FIST (LIFT / HOLD = PAUSE)",
 }
 
 
@@ -77,7 +78,7 @@ def run(cfg: Config) -> None:
     mouse = PynputMouse()
     cap = _open_camera(cfg)
 
-    print("開始控制。握拳維持約 1 秒可暫停 / 恢復。", "預覽視窗按 q 或 Esc 結束。" if cfg.show_preview else "按 Ctrl+C 結束。")
+    print("開始控制。張開手掌移動游標，短握拳可把手移回中間，握拳 1.5 秒暫停 / 恢復。", "預覽視窗按 q 或 Esc 結束。" if cfg.show_preview else "按 Ctrl+C 結束。")
     start = time.monotonic()
     last = start
     fps = 0.0

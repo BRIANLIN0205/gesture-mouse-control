@@ -24,7 +24,8 @@ ACTIONS = {
 }
 
 DEFAULT_GESTURE_ACTIONS: Dict[str, str] = {
-    Gesture.MOVE.value: "move_cursor",
+    Gesture.PALM.value: "move_cursor",
+    Gesture.POINT.value: "none",
     Gesture.PINCH_INDEX.value: "hold_left",
     Gesture.PINCH_MIDDLE.value: "click_right",
     Gesture.TWO_FINGER.value: "scroll",
@@ -69,7 +70,7 @@ class ControlConfig:
     stable_frames: int = 2           # 手勢要連續幾幀一致才生效，避免閃動誤觸
     scroll_sensitivity: float = 40.0 # 手移動整個畫面高度 = 捲動幾格
     scroll_invert: bool = False
-    pause_hold_seconds: float = 0.8  # 握拳要維持多久才切換暫停
+    pause_hold_seconds: float = 1.5  # 握拳要維持多久才切換暫停（短握拳 = 抬起，游標停住）
 
 
 @dataclass

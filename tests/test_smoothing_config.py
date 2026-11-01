@@ -33,7 +33,8 @@ def test_filter_reset():
 
 def test_default_config():
     cfg = Config()
-    assert cfg.action_for(Gesture.MOVE) == "move_cursor"
+    assert cfg.action_for(Gesture.PALM) == "move_cursor"
+    assert cfg.action_for(Gesture.POINT) == "none"
     assert cfg.action_for(Gesture.PINCH_INDEX) == "hold_left"
     assert cfg.action_for(Gesture.FIST) == "toggle_pause"
     assert cfg.action_for(Gesture.NONE) == "none"
@@ -52,7 +53,7 @@ def test_partial_config_keeps_defaults():
     assert cfg.cursor.frame_margin == 0.2
     assert cfg.cursor.pointer_landmark == 5
     assert cfg.gestures["fist"] == "none"
-    assert cfg.gestures["move"] == "move_cursor"
+    assert cfg.gestures["palm"] == "move_cursor"
 
 
 @pytest.mark.parametrize(
@@ -60,7 +61,7 @@ def test_partial_config_keeps_defaults():
     [
         {"cursor": {"typo": 1}},
         {"gestures": {"wave": "click_left"}},
-        {"gestures": {"move": "fly"}},
+        {"gestures": {"palm": "fly"}},
         {"unknown_section": {}},
         {"cursor": {"mode": "teleport"}},
     ],

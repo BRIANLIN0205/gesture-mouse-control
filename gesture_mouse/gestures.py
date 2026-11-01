@@ -10,8 +10,9 @@ from .hand import Landmarks
 
 
 class Gesture(str, Enum):
-    NONE = "none"                  # 沒有手，或手勢不明（例如張開手掌）
-    MOVE = "move"                  # 只伸出食指
+    NONE = "none"                  # 沒有手，或手勢不明
+    PALM = "palm"                  # 張開手掌（四指伸直）
+    POINT = "point"                # 只伸出食指
     PINCH_INDEX = "pinch_index"    # 食指 + 拇指捏合
     PINCH_MIDDLE = "pinch_middle"  # 中指 + 拇指捏合
     TWO_FINGER = "two_finger"      # 食指 + 中指伸出（捲動）
@@ -78,8 +79,12 @@ class GestureClassifier:
         if ext["index"] and ext["middle"] and not ext["ring"] and not ext["pinky"]:
             return Gesture.TWO_FINGER
 
-        # 4. 移動：只有食指伸直
+        # 4. 張開手掌：四指都伸直
+        if all(ext.values()):
+            return Gesture.PALM
+
+        # 5. 只有食指伸直
         if ext["index"] and not ext["middle"] and not ext["ring"] and not ext["pinky"]:
-            return Gesture.MOVE
+            return Gesture.POINT
 
         return Gesture.NONE

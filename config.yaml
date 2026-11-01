@@ -31,18 +31,19 @@ control:
   stable_frames: 2          # 手勢要連續幾幀一致才生效
   scroll_sensitivity: 40.0  # 手移動整個畫面高度 = 捲動幾格
   scroll_invert: false      # 反轉捲動方向
-  pause_hold_seconds: 0.8   # 握拳維持幾秒切換暫停 / 恢復
+  pause_hold_seconds: 1.5   # 握拳維持幾秒切換暫停 / 恢復（握不到這麼久 = 抬起，游標停住）
 
 # 手勢 → 動作
-# 手勢：move（只伸食指）、pinch_index（食指+拇指捏合）、pinch_middle（中指+拇指捏合）、
+# 手勢：palm（張開手掌）、point（只伸食指）、pinch_index（食指+拇指捏合）、pinch_middle（中指+拇指捏合）、
 #       two_finger（食指+中指伸出）、fist（握拳）
 # 動作：move_cursor、hold_left、hold_right、click_left、click_right、double_click、
 #       scroll、toggle_pause、none
 gestures:
-  move: move_cursor
+  palm: move_cursor           # 張開手掌移動游標
+  point: none                 # 只伸食指：目前沒有作用
   pinch_index: hold_left      # 捏一下 = 左鍵點擊，捏住移動 = 拖曳
   pinch_middle: click_right
   two_finger: scroll
-  fist: toggle_pause
+  fist: toggle_pause          # 短握拳 = 抬起（游標停住，可把手移回中間）；長握拳 = 暫停 / 恢復
 
 show_preview: true

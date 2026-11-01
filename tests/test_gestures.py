@@ -16,8 +16,8 @@ def test_no_hand(clf):
     assert clf.classify(None) == Gesture.NONE
 
 
-def test_index_only_is_move(clf):
-    assert clf.classify(make_hand(index=True)) == Gesture.MOVE
+def test_index_only_is_point(clf):
+    assert clf.classify(make_hand(index=True)) == Gesture.POINT
 
 
 def test_index_and_middle_is_two_finger(clf):
@@ -28,8 +28,18 @@ def test_all_folded_is_fist(clf):
     assert clf.classify(make_hand(index=False)) == Gesture.FIST
 
 
-def test_open_palm_is_none(clf):
-    assert clf.classify(make_hand(index=True, middle=True, ring=True, pinky=True)) == Gesture.NONE
+def test_open_palm_is_palm(clf):
+    assert clf.classify(make_hand(index=True, middle=True, ring=True, pinky=True)) == Gesture.PALM
+
+
+def test_three_fingers_is_none(clf):
+    assert clf.classify(make_hand(index=True, middle=True, ring=True)) == Gesture.NONE
+
+
+def test_pinch_from_open_palm(clf):
+    # 張開手掌時拇指碰食指（OK 手勢）也算左鍵捏合
+    hand = make_hand(index=True, middle=True, ring=True, pinky=True, thumb_tip=(0.445, 0.41))
+    assert clf.classify(hand) == Gesture.PINCH_INDEX
 
 
 def test_thumb_on_index_is_pinch_index(clf):
@@ -48,9 +58,9 @@ def test_pinch_hysteresis(clf):
     # 距離 0.06：在兩個門檻之間，維持捏合
     assert clf.classify(make_hand(thumb_tip=(0.44, 0.46))) == Gesture.PINCH_INDEX
     # 距離 0.08：超過放開門檻
-    assert clf.classify(make_hand(thumb_tip=(0.44, 0.48))) == Gesture.MOVE
+    assert clf.classify(make_hand(thumb_tip=(0.44, 0.48))) == Gesture.POINT
     # 距離 0.06 但先前沒捏合：不算捏合
-    assert clf.classify(make_hand(thumb_tip=(0.44, 0.46))) == Gesture.MOVE
+    assert clf.classify(make_hand(thumb_tip=(0.44, 0.46))) == Gesture.POINT
 
 
 def test_scale_invariant(clf):
@@ -66,7 +76,7 @@ def test_scale_invariant(clf):
 
 
 def test_translation_invariant(clf):
-    assert clf.classify(make_hand(index=True, offset=(0.2, -0.1))) == Gesture.MOVE
+    assert clf.classify(make_hand(index=True, offset=(0.2, -0.1))) == Gesture.POINT
 
 
 def test_wrong_landmark_count(clf):
