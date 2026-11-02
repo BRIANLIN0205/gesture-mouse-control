@@ -1,0 +1,97 @@
+# 手勢滑鼠控制設定檔
+# 沒寫到的欄位會用預設值。
+
+camera:
+  index: 0          # 鏡頭編號，筆電內建鏡頭通常是 0
+  width: 640
+  height: 480
+  mirror: true      # 左右翻轉畫面，像照鏡子一樣比較直覺
+
+detection:
+  min_detection_confidence: 0.7
+  min_tracking_confidence: 0.6
+  pinch_enter: 0.25   # 指尖距離 < 手大小 × 0.25 算捏合（越小越難觸發）
+  pinch_exit: 0.35    # 指尖距離 > 手大小 × 0.35 才算放開（要比 pinch_enter 大）
+  extend_ratio: 1.1   # 判斷手指伸直的門檻
+  control_hand: right # 主控手：right / left。兩手同框時只聽這隻手；any = 不分左右
+  swap_hands: false   # 預覽視窗手腕旁的 L / R 和實際相反時，改成 true
+  edge_margin: 0.03   # 手離鏡頭畫面邊緣小於這個比例時，狀態圓圈會閃黃色提醒
+
+cursor:
+  mode: relative          # relative = 像觸控板，手的位移帶動游標；absolute = 手的位置直接對應螢幕位置
+  pointer_landmark: 5     # 游標跟著哪個關鍵點：5 = 食指根部（捏合時較穩）、8 = 食指指尖
+  # 相對模式
+  relative_gain: 1.5      # 基本倍率：慢慢移動時，手移過整個鏡頭畫面寬 = 游標移過 1.5 個螢幕寬
+  relative_accel: 1.5     # 加速度：移動越快游標走越遠，0 = 不加速
+  relative_max_gain: 6.0  # 加速後的倍率上限
+  relative_deadzone: 0.8  # 每幀小於幾像素的移動忽略，避免手靜止時游標飄移
+  # 絕對模式
+  frame_margin: 0.15      # 畫面四周留白比例，預覽視窗中的藍框就是有效範圍
+  smoothing_min_cutoff: 1.0  # 越小越平滑，但游標會比較「黏」
+  smoothing_beta: 0.01       # 越大，快速移動時延遲越小
+
+control:
+  stable_frames: 2          # 手勢要連續幾幀一致才生效
+  scroll_sensitivity: 40.0  # 手移動整個畫面高度 = 捲動幾格
+  scroll_invert: false      # 反轉捲動方向
+  pause_hold_seconds: 1.5   # 握拳維持幾秒切換暫停 / 恢復（握不到這麼久 = 抬起，游標停住）
+  click_lock_seconds: 0.15  # 捏合點擊時鎖住游標的時間，避免點歪；0 = 不鎖
+  drag_threshold_px: 25     # 食指捏合後移動超過幾像素才算拖曳
+  right_hold_seconds: 0.6   # 食指捏住不動多久算右鍵
+  scroll_inertia: true      # 甩動捲動後頁面會繼續滑動並慢慢停下
+  scroll_inertia_min_speed: 15.0  # 甩動速度超過每秒幾格才觸發慣性
+  scroll_inertia_friction: 3.0    # 慣性減速快慢，越大停得越快
+  # 搖桿（中指捏拇指）：捏住時上下偏離起點越遠捲越快；快速放開 = 方向鍵；往左 / 右偏再放開 = 上一頁 / 下一頁
+  joystick_deadzone: 0.03     # 離起點不到畫面高的 3% 不捲動（避免手抖）
+  joystick_full: 0.20         # 偏到畫面高的 20% 時達到最高速
+  joystick_max_speed: 30.0    # 最高每秒捲幾格
+  joystick_tap_seconds: 0.4   # 捏住不到 0.4 秒就放開（且有往上 / 下偏）= 方向鍵上 / 下
+  joystick_nav_distance: 0.08 # 往左 / 右偏超過畫面寬的 8%，放開時翻頁
+  # 手掌甩動（gestures.palm 設成 move_flick_scroll 才有作用）
+  palm_flick_nav: true      # 手掌快速左右甩 = 上一頁 / 下一頁
+  palm_swipe_min_speed: 2.0 # 手掌上下甩多快才算捲動（每秒幾個畫面高）
+  swipe_min_speed: 1.2      # 三指甩動要多快才算；常誤觸就調大
+  swipe_min_distance: 0.08  # 甩動至少要移動畫面高的幾成；常誤觸就調大
+  swipe_cooldown: 0.5       # 一次甩動後多久內不再判定（手收回來不會誤判）
+  flick_scroll_gain: 20.0   # 甩動捲動的力道，越大一甩捲越多
+
+two_hands:            # 雙手動作（另一隻手 = 主控手以外的那隻，預設左手）
+  zoom: true          # 兩手都用食指捏拇指，拉開 = 放大、靠近 = 縮小（Ctrl + 滾輪）
+  zoom_step: 0.15     # 兩手距離每變化幾成算縮放一格；太敏感就調大
+  volume: true        # 另一隻手中指捏拇指上下移 = 調音量（像搖桿，離起點越遠調越快）
+  volume_deadzone: 0.03
+  volume_full: 0.20
+  volume_max_speed: 10  # 最快每秒按幾下音量鍵（Windows 每下約 2%）
+
+overlay:
+  enabled: true     # 游標旁的狀態小圓圈：綠 = 移動、橘 = 捏合、紅橘 = 拖曳、藍 = 捲動、紫 = 三指視窗手勢、
+                    # 青 = 雙手縮放、粉紅 = 調音量、
+                    # 白 = 抬起（握拳）、紅 = 暫停、灰 = 看不到手、黃色閃爍 = 手快出畫面
+  size: 16          # 圓圈直徑（像素）
+  offset: 18        # 離游標多遠
+
+sound:
+  enabled: true     # 暫停 / 恢復時播放提示音
+  volume: 0.5       # 內建提示音音量 0~1
+  pause_file: ""    # 自訂暫停音效（wav 檔路徑），留空 = 內建低音
+  resume_file: ""   # 自訂恢復音效（wav 檔路徑），留空 = 內建高音
+  click_enabled: true   # 點擊 / 開始拖曳時播放輕微的「喀」聲
+  click_volume: 0.25
+  click_file: ""        # 自訂點擊音效（wav 檔路徑），留空 = 內建
+
+# 手勢 → 動作
+# 手勢：palm（張開手掌）、point（只伸食指）、three_finger（食指+中指+無名指）、pinch_index（食指+拇指捏合）、pinch_middle（中指+拇指捏合）、
+#       two_finger（食指+中指伸出）、fist（握拳）
+# 動作：move_cursor、hold_left、hold_right、click_left、click_right、double_click、
+#       move_flick_scroll、joystick、scroll、flick_scroll、flick_windows、toggle_pause、none、
+#       pinch_smart（輕捏 = 左鍵、捏著移動 = 拖曳、捏住不動 = 右鍵）
+gestures:
+  palm: move_cursor           # 張開手掌移動游標（改成 move_flick_scroll 可加上快甩捲動 / 翻頁）
+  point: none                 # 只伸食指：目前沒有作用
+  pinch_index: pinch_smart    # 輕捏 = 左鍵，捏著移動 = 拖曳，捏住不動 0.6 秒 = 右鍵
+  pinch_middle: joystick      # 搖桿：上下 = 捲動（越遠越快）、快速放開 = 方向鍵、左右放開 = 上一頁 / 下一頁
+  two_finger: none            # 目前沒有作用（可改成 flick_scroll：上下甩捲動、左右甩上一頁 / 下一頁）
+  three_finger: flick_windows # 上甩 = 所有視窗、下甩 = 顯示桌面、左右甩 = 切換視窗
+  fist: toggle_pause          # 短握拳 = 抬起（游標停住，可把手移回中間）；長握拳 = 暫停 / 恢復
+
+show_preview: true
