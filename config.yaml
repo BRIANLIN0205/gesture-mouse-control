@@ -21,9 +21,9 @@ cursor:
   mode: relative          # relative = 像觸控板，手的位移帶動游標；absolute = 手的位置直接對應螢幕位置
   pointer_landmark: 5     # 游標跟著哪個關鍵點：5 = 食指根部（捏合時較穩）、8 = 食指指尖
   # 相對模式
-  relative_gain: 1.0      # 基本倍率：慢慢移動時，手移過整個鏡頭畫面寬 = 游標移過一個螢幕寬
+  relative_gain: 1.5      # 基本倍率：慢慢移動時，手移過整個鏡頭畫面寬 = 游標移過 1.5 個螢幕寬
   relative_accel: 1.5     # 加速度：移動越快游標走越遠，0 = 不加速
-  relative_max_gain: 4.0  # 加速後的倍率上限
+  relative_max_gain: 6.0  # 加速後的倍率上限
   relative_deadzone: 0.8  # 每幀小於幾像素的移動忽略，避免手靜止時游標飄移
   # 絕對模式
   frame_margin: 0.15      # 畫面四周留白比例，預覽視窗中的藍框就是有效範圍
