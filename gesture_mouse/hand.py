@@ -6,7 +6,8 @@
 from __future__ import annotations
 
 import math
-from typing import Sequence, Tuple
+from dataclasses import dataclass
+from typing import List, Optional, Sequence, Tuple
 
 Point = Tuple[float, float, float]
 Landmarks = Sequence[Point]
@@ -61,3 +62,26 @@ def is_finger_extended(lm: Landmarks, finger: str, aspect: float = 1.0, ratio: f
 def near_edge(lm: Landmarks, margin: float = 0.03) -> bool:
     """手的任何關鍵點太靠近鏡頭畫面邊緣（快要離開畫面）。"""
     return any(p[0] < margin or p[0] > 1 - margin or p[1] < margin or p[1] > 1 - margin for p in lm)
+
+
+@dataclass
+class DetectedHand:
+    landmarks: List[Point]
+    side: str          # "right" / "left"（使用者自己的右手 / 左手）
+    score: float = 1.0
+
+
+def select_hand(hands: Sequence[DetectedHand], control_hand: str = "right") -> Optional[List[Point]]:
+    """畫面上可能有兩隻手，只取主控手的關鍵點；找不到主控手就回傳 None（游標停住）。
+
+    control_hand：right / left = 只聽那隻手；any = 取信心最高的一隻。
+    """
+    if not hands:
+        return None
+    if control_hand == "any":
+        candidates = list(hands)
+    else:
+        candidates = [h for h in hands if h.side == control_hand]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda h: h.score).landmarks

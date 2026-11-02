@@ -54,6 +54,8 @@ class DetectionConfig:
     pinch_enter: float = 0.25
     pinch_exit: float = 0.35
     extend_ratio: float = 1.1
+    control_hand: str = "right"      # 主控手：right / left；any = 不分左右（兩手同框時取信心最高的）
+    swap_hands: bool = False         # 左右手判斷相反時設 true（預覽視窗手腕旁會標 L / R）
     edge_margin: float = 0.03        # 手離畫面邊緣小於這個比例時提示「快出畫面了」
 
 
@@ -162,6 +164,8 @@ def config_from_dict(data: Optional[Dict[str, Any]]) -> Config:
             raise ValueError(f"手勢 {name} 的動作 {action} 不存在（可用：{', '.join(sorted(ACTIONS))}）")
     cfg.gestures = gestures
 
+    if cfg.detection.control_hand not in ("right", "left", "any"):
+        raise ValueError(f"detection.control_hand 只能是 right、left 或 any，收到 {cfg.detection.control_hand}")
     if cfg.cursor.mode not in ("relative", "absolute"):
         raise ValueError(f"cursor.mode 只能是 relative 或 absolute，收到 {cfg.cursor.mode}")
 

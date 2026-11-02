@@ -44,10 +44,22 @@ def _open_camera(cfg: Config):
     return cap
 
 
-def _draw(frame, lm, gesture: Gesture, paused: bool, fps: float, margin) -> None:
+def _draw(frame, lm, gesture: Gesture, paused: bool, fps: float, margin, hands=()) -> None:
     import cv2
 
     h, w = frame.shape[:2]
+    # 所有偵測到的手都標上 L / R；不是主控手的畫成灰色（方便確認左右手判斷有沒有反）
+    for hd in hands:
+        if hd.landmarks is lm:
+            continue
+        pts = [(int(p[0] * w), int(p[1] * h)) for p in hd.landmarks]
+        for a, b in CONNECTIONS:
+            cv2.line(frame, pts[a], pts[b], (120, 120, 120), 1)
+        cv2.putText(frame, hd.side[0].upper(), (pts[0][0] - 8, pts[0][1] + 24), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (160, 160, 160), 2)
+    for hd in hands:
+        if hd.landmarks is lm:
+            cv2.putText(frame, hd.side[0].upper(), (int(lm[0][0] * w) - 8, int(lm[0][1] * h) + 24),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
     # 有效區域框（絕對模式才有：手在框內就能碰到整個螢幕）
     if margin is not None:
         cv2.rectangle(frame, (int(w * margin), int(h * margin)), (int(w * (1 - margin)), int(h * (1 - margin))), (255, 200, 0), 1)
@@ -68,7 +80,7 @@ def run(cfg: Config, tutorial: str = "auto") -> None:
     import cv2
 
     from .detector import HandDetector
-    from .hand import near_edge
+    from .hand import near_edge, select_hand
     from .mouse import PynputMouse, enable_dpi_awareness, get_screen_size
     from .overlay import CursorOverlay, overlay_status
     from .sounds import SoundPlayer
@@ -78,7 +90,10 @@ def run(cfg: Config, tutorial: str = "auto") -> None:
     screen = get_screen_size()
     print(f"螢幕解析度：{screen[0]}x{screen[1]}")
 
-    detector = HandDetector(cfg.detection.min_detection_confidence, cfg.detection.min_tracking_confidence)
+    detector = HandDetector(
+        cfg.detection.min_detection_confidence, cfg.detection.min_tracking_confidence,
+        mirrored=cfg.camera.mirror, swap_hands=cfg.detection.swap_hands,
+    )
     classifier = GestureClassifier(cfg.detection.pinch_enter, cfg.detection.pinch_exit, cfg.detection.extend_ratio)
     controller = Controller(cfg, screen)
     mouse = PynputMouse()
@@ -111,7 +126,8 @@ def run(cfg: Config, tutorial: str = "auto") -> None:
 
             now = time.monotonic()
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            lm = detector.detect(rgb, int((now - start) * 1000))
+            hands = detector.detect_hands(rgb, int((now - start) * 1000))
+            lm = select_hand(hands, cfg.detection.control_hand)   # 兩手同框時只聽主控手
             h, w = frame.shape[:2]
             gesture = classifier.classify(lm, aspect=w / h)
             cmds = controller.update(gesture, lm, now)
@@ -147,7 +163,7 @@ def run(cfg: Config, tutorial: str = "auto") -> None:
             if cfg.show_preview or tracker is not None:
                 window_open = True
                 _draw(frame, lm, controller.active, controller.paused, fps,
-                      cfg.cursor.frame_margin if cfg.cursor.mode == "absolute" else None)
+                      cfg.cursor.frame_margin if cfg.cursor.mode == "absolute" else None, hands)
                 if edge:
                     cv2.rectangle(frame, (0, 0), (w - 1, h - 1), (0, 212, 255), 6)
                 if tracker is not None:

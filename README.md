@@ -22,6 +22,8 @@
 | 握拳約 1.5 秒 | 暫停 / 恢復控制（暫停時只認握拳），會播提示音 |
 | 手離開畫面 | 游標停住 |
 
+**兩隻手同時入鏡**：只有主控手（預設右手）會操作，另一隻手怎麼動都不影響。預覽視窗會在手腕旁標 `R` / `L`，主控手是綠色、另一隻是灰色。只有另一隻手在畫面上時，游標停住。
+
 捏合瞬間游標會鎖住約 0.15 秒，避免捏合時手抖把點擊點歪。所有對應都可以在 `config.yaml` 修改。
 
 ### 回饋
@@ -99,6 +101,8 @@ python -m gesture_mouse
 | 關掉點擊音 | `sound.click_enabled: false` |
 | 關掉游標旁小圓圈 | `overlay.enabled: false` |
 | 出畫面提示太敏感 | 調小 `detection.edge_margin` |
+| 用左手操作 | `detection.control_hand: left`；不分左右設 `any` |
+| 預覽視窗標的 L / R 和實際相反 | `detection.swap_hands: true` |
 | 關掉暫停 / 恢復提示音 | `sound.enabled: false` |
 | 換成自己的音效 | `sound.pause_file`、`sound.resume_file` 填 wav 檔路徑 |
 
