@@ -10,8 +10,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Optional
 
-from .controller import ARROWS, FLICK_NAV, FLICK_WINDOWS, Click, Hotkey, MoveBy, MoveTo, PauseChanged, Press, Release, Scroll
+from .controller import ARROWS, FLICK_NAV, FLICK_WINDOWS, Click, Hotkey, MoveBy, MoveTo, PauseChanged, Press, Release, Scroll, Zoom
 from .gestures import Gesture
+from .two_hands import VOLUME_DOWN, VOLUME_UP
 
 DONE_FLAG = Path(__file__).resolve().parent.parent / ".tutorial_done"
 
@@ -33,6 +34,8 @@ STEPS: List[Step] = [
     Step("arrow", "中指捏拇指，往上或下一點就放開（方向鍵）", "Middle pinch, nudge up/down, release (arrow)"),
     Step("nav", "中指捏拇指，往左或右移再放開（翻頁）", "Middle pinch, move left/right, release (back/fwd)"),
     Step("windows", "伸出食指、中指、無名指，往任一方向甩（視窗）", "Three fingers: flick any direction (windows)"),
+    Step("zoom", "兩手都用食指捏拇指，拉開或靠近（縮放）", "Both hands index pinch, spread/close (zoom)"),
+    Step("volume", "左手中指捏拇指，往上或下移（音量）", "Left hand middle pinch, move up/down (volume)"),
     Step("pause", "握拳約 1.5 秒（暫停，會有提示音）", "Hold fist ~1.5 s (pause)"),
     Step("resume", "再握拳約 1.5 秒（恢復）", "Hold fist again (resume)"),
 ]
@@ -96,6 +99,10 @@ class TutorialTracker:
             ok = any(c in FLICK_NAV.values() for c in cmds if isinstance(c, Hotkey))
         elif k == "windows":
             ok = any(c in FLICK_WINDOWS.values() for c in cmds if isinstance(c, Hotkey))
+        elif k == "zoom":
+            ok = any(isinstance(c, Zoom) for c in cmds)
+        elif k == "volume":
+            ok = VOLUME_UP in cmds or VOLUME_DOWN in cmds
         elif k == "pause":
             ok = PauseChanged(True) in cmds
         elif k == "resume":

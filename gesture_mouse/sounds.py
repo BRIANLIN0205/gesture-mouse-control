@@ -71,8 +71,8 @@ class SoundPlayer:
                 return self.pause_wav if cmd.paused else self.resume_wav   # 暫停音優先
             if self.click_enabled and isinstance(cmd, (Click, Press)) and wav is None:
                 wav = self.right_wav if cmd.button == "right" else self.left_wav
-            if self.click_enabled and isinstance(cmd, Hotkey) and wav is None:
-                wav = self.right_wav   # 甩動觸發的快捷鍵也給一聲回饋
+            if self.click_enabled and isinstance(cmd, Hotkey) and wav is None and not cmd.name.startswith("volume"):
+                wav = self.right_wav   # 甩動觸發的快捷鍵也給一聲回饋（音量鍵除外，Windows 會自己顯示音量）
         return wav
 
     def execute(self, commands: Iterable[object]) -> None:

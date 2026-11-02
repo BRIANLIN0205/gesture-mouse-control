@@ -85,3 +85,19 @@ def select_hand(hands: Sequence[DetectedHand], control_hand: str = "right") -> O
     if not candidates:
         return None
     return max(candidates, key=lambda h: h.score).landmarks
+
+
+def select_other_hand(
+    hands: Sequence[DetectedHand], control_hand: str, main: Optional[List[Point]]
+) -> Optional[List[Point]]:
+    """主控手以外的另一隻手（雙手動作用）。找不到就回傳 None。
+
+    control_hand 是 right / left 時，只取另一側的手；any 時取主控手以外信心最高的一隻。
+    """
+    if control_hand == "any":
+        candidates = [h for h in hands if h.landmarks is not main]
+    else:
+        candidates = [h for h in hands if h.side != control_hand and h.landmarks is not main]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda h: h.score).landmarks

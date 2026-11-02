@@ -44,7 +44,7 @@ def _open_camera(cfg: Config):
     return cap
 
 
-def _draw(frame, lm, gesture: Gesture, paused: bool, fps: float, margin, hands=()) -> None:
+def _draw(frame, lm, gesture: Gesture, paused: bool, fps: float, margin, hands=(), label=None) -> None:
     import cv2
 
     h, w = frame.shape[:2]
@@ -69,7 +69,7 @@ def _draw(frame, lm, gesture: Gesture, paused: bool, fps: float, margin, hands=(
             cv2.line(frame, pts[a], pts[b], (0, 255, 0), 2)
         for p in pts:
             cv2.circle(frame, p, 3, (0, 0, 255), -1)
-    status = "PAUSED" if paused else GESTURE_LABELS.get(gesture, gesture.value.upper())
+    status = "PAUSED" if paused else (label or GESTURE_LABELS.get(gesture, gesture.value.upper()))
     color = (0, 0, 255) if paused else (0, 255, 0)
     cv2.putText(frame, status, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
     cv2.putText(frame, f"{fps:.0f} FPS", (10, h - 12), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
@@ -80,11 +80,12 @@ def run(cfg: Config, tutorial: str = "auto") -> None:
     import cv2
 
     from .detector import HandDetector
-    from .hand import near_edge, select_hand
+    from .hand import near_edge, select_hand, select_other_hand
     from .mouse import PynputMouse, enable_dpi_awareness, get_screen_size
     from .overlay import CursorOverlay, overlay_status
     from .sounds import SoundPlayer
     from .tutorial import TutorialPanel, TutorialTracker, mark_done, should_auto_run
+    from .two_hands import TwoHandController
 
     enable_dpi_awareness()
     screen = get_screen_size()
@@ -95,7 +96,9 @@ def run(cfg: Config, tutorial: str = "auto") -> None:
         mirrored=cfg.camera.mirror, swap_hands=cfg.detection.swap_hands,
     )
     classifier = GestureClassifier(cfg.detection.pinch_enter, cfg.detection.pinch_exit, cfg.detection.extend_ratio)
+    other_classifier = GestureClassifier(cfg.detection.pinch_enter, cfg.detection.pinch_exit, cfg.detection.extend_ratio)
     controller = Controller(cfg, screen)
+    two = TwoHandController(cfg.two_hands, cfg.control.stable_frames)
     mouse = PynputMouse()
     sounds = SoundPlayer(cfg.sound)
     overlay = CursorOverlay(cfg.overlay)
@@ -127,16 +130,24 @@ def run(cfg: Config, tutorial: str = "auto") -> None:
             now = time.monotonic()
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             hands = detector.detect_hands(rgb, int((now - start) * 1000))
-            lm = select_hand(hands, cfg.detection.control_hand)   # 兩手同框時只聽主控手
+            lm = select_hand(hands, cfg.detection.control_hand)   # 游標、點擊只聽主控手
+            other = select_other_hand(hands, cfg.detection.control_hand, lm)   # 另一隻手只用在雙手動作
             h, w = frame.shape[:2]
             gesture = classifier.classify(lm, aspect=w / h)
-            cmds = controller.update(gesture, lm, now)
+            other_gesture = other_classifier.classify(other, aspect=w / h)
+            two_cmds = two.update(gesture, lm, other_gesture, other, now, w / h, controller.paused)
+            if two.main_blocked:
+                # 雙手縮放中：主控手當作離開畫面，取消捏合中的點擊 / 拖曳（不會誤點）
+                cmds = controller.update(Gesture.NONE, None, now)
+            else:
+                cmds = controller.update(gesture, lm, now)
+            cmds = cmds + two_cmds
             if tracker is None:
                 mouse.execute(cmds)        # 教學模式不真的操作滑鼠
             sounds.execute(cmds)
 
             edge = lm is not None and near_edge(lm, cfg.detection.edge_margin)
-            status = overlay_status(controller, lm is not None, edge)
+            status = overlay_status(controller, lm is not None, edge, two)
             overlay.update(status, mouse.position if overlay.enabled else None, now)
 
             # 教學進度
@@ -150,6 +161,7 @@ def run(cfg: Config, tutorial: str = "auto") -> None:
                         break
                     tracker = None
                     controller = Controller(cfg, screen)   # 重新開始，清掉練習時的狀態
+                    two = TwoHandController(cfg.two_hands, cfg.control.stable_frames)
                     print("教學完成，開始控制。")
 
             dt = now - last
@@ -163,7 +175,8 @@ def run(cfg: Config, tutorial: str = "auto") -> None:
             if cfg.show_preview or tracker is not None:
                 window_open = True
                 _draw(frame, lm, controller.active, controller.paused, fps,
-                      cfg.cursor.frame_margin if cfg.cursor.mode == "absolute" else None, hands)
+                      cfg.cursor.frame_margin if cfg.cursor.mode == "absolute" else None, hands,
+                      "ZOOM (BOTH HANDS)" if two.zooming else ("VOLUME" if two.volume_active else None))
                 if edge:
                     cv2.rectangle(frame, (0, 0), (w - 1, h - 1), (0, 212, 255), 6)
                 if tracker is not None:
@@ -178,6 +191,7 @@ def run(cfg: Config, tutorial: str = "auto") -> None:
                         break
                     tracker = None
                     controller = Controller(cfg, screen)
+                    two = TwoHandController(cfg.two_hands, cfg.control.stable_frames)
                     print("已跳過教學，開始控制。")
     except KeyboardInterrupt:
         pass

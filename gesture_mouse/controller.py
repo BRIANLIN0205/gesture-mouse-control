@@ -61,6 +61,11 @@ class Hotkey:
     name: str = ""         # 給教學 / 記錄用的名稱，例如 "back"
 
 
+@dataclass(frozen=True)
+class Zoom:
+    steps: int  # 正數 = 放大（Ctrl + 滾輪往上），負數 = 縮小
+
+
 # 甩動方向 → 快捷鍵
 FLICK_NAV = {
     "left": Hotkey(("alt", "left"), "back"),        # 上一頁

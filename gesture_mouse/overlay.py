@@ -1,7 +1,7 @@
 """游標旁的狀態小圓圈。
 
 不開預覽視窗也能知道系統怎麼解讀你的手：
-綠 = 移動、橘 = 捏合判斷中、紅橘 = 拖曳、藍 = 捲動、紫 = 視窗手勢（三指）、白 = 抬起（握拳）、
+綠 = 移動、橘 = 捏合判斷中、紅橘 = 拖曳、藍 = 捲動、紫 = 視窗手勢（三指）、青 = 雙手縮放、粉紅 = 調音量、白 = 抬起（握拳）、
 紅 = 暫停、灰 = 看不到手、黃色閃爍 = 手快離開鏡頭畫面。
 
 視窗是透明、置頂、滑鼠可穿透的，不會擋到點擊。目前只支援 Windows。
@@ -26,15 +26,21 @@ COLORS = {
     "idle": "#c8c8c8",
     "warning": "#ffd400",
     "windows": "#b04aff",
+    "zoom": "#00c8c8",
+    "volume": "#ff4fa3",
 }
 
 _TRANSPARENT = "#ff00ff"
 
 
-def overlay_status(ctrl: Controller, hand_present: bool, near_edge: bool) -> str:
-    """依控制器目前狀態決定圓圈要顯示哪一種狀態。"""
+def overlay_status(ctrl: Controller, hand_present: bool, near_edge: bool, two_hands=None) -> str:
+    """依控制器目前狀態決定圓圈要顯示哪一種狀態。two_hands：TwoHandController（可省略）。"""
     if ctrl.paused:
         return "paused"
+    if two_hands is not None and two_hands.zooming:
+        return "zoom"
+    if two_hands is not None and two_hands.volume_active:
+        return "volume"
     if not hand_present:
         return "scroll" if ctrl.inertia_active else "nohand"
     if near_edge:

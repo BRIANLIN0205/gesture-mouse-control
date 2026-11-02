@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from typing import Iterable, Tuple
 
-from .controller import Click, Hotkey, MoveBy, MoveTo, Press, Release, Scroll
+from .controller import Click, Hotkey, MoveBy, MoveTo, Press, Release, Scroll, Zoom
 
 
 def enable_dpi_awareness() -> None:
@@ -55,6 +55,7 @@ class PynputMouse:
         self._keys = {
             "alt": Key.alt, "shift": Key.shift, "ctrl": Key.ctrl, "win": Key.cmd,
             "tab": Key.tab, "left": Key.left, "right": Key.right, "up": Key.up, "down": Key.down,
+            "volume_up": Key.media_volume_up, "volume_down": Key.media_volume_down,
         }
 
     @property
@@ -78,6 +79,8 @@ class PynputMouse:
                 self._mouse.scroll(0, cmd.steps)
             elif isinstance(cmd, Hotkey):
                 self._hotkey(cmd.keys)
+            elif isinstance(cmd, Zoom):
+                self._zoom(cmd.steps)
 
     def _hotkey(self, names) -> None:
         keys = [self._keys.get(n, n) for n in names]
@@ -89,3 +92,12 @@ class PynputMouse:
         finally:
             for k in reversed(pressed):
                 self._keyboard.release(k)
+
+    def _zoom(self, steps: int) -> None:
+        """按住 Ctrl 捲動滾輪 = 縮放（瀏覽器、圖片、PDF、地圖等都通用）。"""
+        ctrl = self._keys["ctrl"]
+        self._keyboard.press(ctrl)
+        try:
+            self._mouse.scroll(0, steps)
+        finally:
+            self._keyboard.release(ctrl)

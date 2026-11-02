@@ -1,6 +1,8 @@
 import numpy as np
 
 from gesture_mouse.config import config_from_dict
+from gesture_mouse.controller import Zoom
+from gesture_mouse.two_hands import VOLUME_DOWN, VOLUME_UP
 from gesture_mouse.controller import ARROWS, FLICK_NAV, FLICK_WINDOWS, Click, Controller, MoveBy, PauseChanged, Press, Release, Scroll
 from gesture_mouse.gestures import Gesture
 from gesture_mouse.tutorial import STEPS, TutorialPanel, TutorialTracker
@@ -30,6 +32,9 @@ def test_steps_complete_in_order():
     assert not t.feed([FLICK_WINDOWS["left"]], Gesture.THREE_FINGER, False)
     assert t.feed([FLICK_NAV["left"]], Gesture.PALM, False)              # nav
     assert t.feed([FLICK_WINDOWS["down"]], Gesture.THREE_FINGER, False)  # windows
+    assert not t.feed([VOLUME_UP], Gesture.PALM, False)
+    assert t.feed([Zoom(1)], Gesture.PINCH_INDEX, False)                # zoom
+    assert t.feed([VOLUME_DOWN], Gesture.PALM, False)                   # volume
     assert t.feed([PauseChanged(True)], Gesture.FIST, True)              # pause
     assert not t.done
     assert t.feed([PauseChanged(False)], Gesture.FIST, False)            # resume

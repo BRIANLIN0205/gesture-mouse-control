@@ -102,6 +102,18 @@ class ControlConfig:
 
 
 @dataclass
+class TwoHandsConfig:
+    # 雙手縮放：兩手都用食指捏拇指，拉開 = 放大、靠近 = 縮小（送出 Ctrl + 滾輪）
+    zoom: bool = True
+    zoom_step: float = 0.15          # 兩手距離每變化幾成算縮放一格
+    # 另一隻手（預設左手）調音量：中指捏拇指上下移，像搖桿
+    volume: bool = True
+    volume_deadzone: float = 0.03    # 離起點不到畫面高的幾成不調整
+    volume_full: float = 0.20        # 偏到畫面高的幾成時達到最快
+    volume_max_speed: float = 10.0   # 最快每秒按幾下音量鍵（Windows 每下約 2%）
+
+
+@dataclass
 class OverlayConfig:
     enabled: bool = True       # 游標旁顯示狀態小圓圈（不開預覽視窗也知道系統怎麼解讀你的手）
     size: int = 16             # 圓圈直徑（像素）
@@ -127,6 +139,7 @@ class Config:
     control: ControlConfig = field(default_factory=ControlConfig)
     sound: SoundConfig = field(default_factory=SoundConfig)
     overlay: OverlayConfig = field(default_factory=OverlayConfig)
+    two_hands: TwoHandsConfig = field(default_factory=TwoHandsConfig)
     gestures: Dict[str, str] = field(default_factory=lambda: dict(DEFAULT_GESTURE_ACTIONS))
     show_preview: bool = True
 
@@ -152,6 +165,7 @@ def config_from_dict(data: Optional[Dict[str, Any]]) -> Config:
         control=_fill(ControlConfig, data.pop("control", None), "control"),
         sound=_fill(SoundConfig, data.pop("sound", None), "sound"),
         overlay=_fill(OverlayConfig, data.pop("overlay", None), "overlay"),
+        two_hands=_fill(TwoHandsConfig, data.pop("two_hands", None), "two_hands"),
     )
 
     gestures = dict(DEFAULT_GESTURE_ACTIONS)
