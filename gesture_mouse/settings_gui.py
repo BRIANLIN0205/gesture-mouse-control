@@ -65,6 +65,10 @@ PAGES: List[Tuple[str, List[Tuple[str, List[Field]]]]] = [
             Field("detection.pinch_enter", "捏合門檻", "float", 0.1, 0.5, 0.01, "越小越難觸發捏合"),
             Field("detection.pinch_exit", "放開門檻", "float", 0.15, 0.7, 0.01, "要比捏合門檻大；越大越不容易誤放開"),
         ]),
+        ("手出畫面時", [
+            Field("detection.loose_palm", "寬鬆移動判定", "bool", tip="不是握拳、捏合、雙指、三指就當作張開手掌，手指被誤判也能移動（只伸食指也會移動）"),
+            Field("detection.edge_hold", "出畫面保持", "bool", tip="手指跑出鏡頭畫面時沿用上一次的狀態，避免手到邊緣突然變握拳或停住"),
+        ]),
         ("握拳", [
             Field("control.pause_hold_seconds", "握拳暫停（秒）", "float", 0.5, 5.0, 0.1, "握拳維持多久切換暫停 / 恢復"),
         ]),

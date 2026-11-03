@@ -90,6 +90,7 @@ def _apply_reload(cfg: Config, new_cfg: Config, parts: dict) -> None:
     d = cfg.detection
     for clf in (parts["classifier"], parts["other_classifier"]):
         clf.pinch_enter, clf.pinch_exit, clf.extend_ratio = d.pinch_enter, max(d.pinch_exit, d.pinch_enter), d.extend_ratio
+        clf.loose_palm, clf.edge_hold = d.loose_palm, d.edge_hold
     if {"cursor.smoothing_min_cutoff", "cursor.smoothing_beta"} & changed:
         parts["controller"].filter = PointFilter(cfg.cursor.smoothing_min_cutoff, cfg.cursor.smoothing_beta)
     parts["two"].stable_frames = max(1, cfg.control.stable_frames)
@@ -127,8 +128,10 @@ def run(cfg: Config, tutorial: str = "auto", config_path: Optional[Path] = None)
         cfg.detection.min_detection_confidence, cfg.detection.min_tracking_confidence,
         mirrored=cfg.camera.mirror, swap_hands=cfg.detection.swap_hands,
     )
-    classifier = GestureClassifier(cfg.detection.pinch_enter, cfg.detection.pinch_exit, cfg.detection.extend_ratio)
-    other_classifier = GestureClassifier(cfg.detection.pinch_enter, cfg.detection.pinch_exit, cfg.detection.extend_ratio)
+    classifier = GestureClassifier(cfg.detection.pinch_enter, cfg.detection.pinch_exit, cfg.detection.extend_ratio,
+                                   cfg.detection.loose_palm, cfg.detection.edge_hold)
+    other_classifier = GestureClassifier(cfg.detection.pinch_enter, cfg.detection.pinch_exit, cfg.detection.extend_ratio,
+                                   cfg.detection.loose_palm, cfg.detection.edge_hold)
     controller = Controller(cfg, screen)
     two = TwoHandController(cfg.two_hands, cfg.control.stable_frames)
     mouse = PynputMouse()

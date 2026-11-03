@@ -13,6 +13,8 @@ detection:
   pinch_enter: 0.25   # 指尖距離 < 手大小 × 0.25 算捏合（越小越難觸發）
   pinch_exit: 0.35    # 指尖距離 > 手大小 × 0.35 才算放開（要比 pinch_enter 大）
   extend_ratio: 1.1   # 判斷手指伸直的門檻
+  loose_palm: true    # 不是握拳、捏合、雙指、三指就當作張開手掌（有手指被誤判也能移動；只伸食指也會移動）
+  edge_hold: true     # 手指跑出鏡頭畫面時沿用它上一次的狀態（避免手到邊緣突然變握拳或停住）
   control_hand: right # 主控手：right / left。兩手同框時只聽這隻手；any = 不分左右
   swap_hands: false   # 預覽視窗手腕旁的 L / R 和實際相反時，改成 true
   edge_margin: 0.03   # 手離鏡頭畫面邊緣小於這個比例時，狀態圓圈會閃黃色提醒

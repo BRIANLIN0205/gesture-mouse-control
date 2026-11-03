@@ -9,7 +9,8 @@ MIDDLE_TIP = (0.50, 0.40)
 
 @pytest.fixture
 def clf():
-    return GestureClassifier()
+    # 嚴格模式：測原本的手勢判斷規則（寬鬆移動與出畫面保持另外測）
+    return GestureClassifier(loose_palm=False, edge_hold=False)
 
 
 def test_no_hand(clf):
@@ -91,3 +92,53 @@ def test_wrong_landmark_count(clf):
 def test_invalid_thresholds():
     with pytest.raises(ValueError):
         GestureClassifier(pinch_enter=0.4, pinch_exit=0.3)
+
+
+def test_loose_palm_turns_unknown_into_palm():
+    clf = GestureClassifier(loose_palm=True, edge_hold=False)
+    # 小指、無名指被誤判彎曲以外的不明組合 → 還是移動
+    assert clf.classify(make_hand(index=False, middle=True, ring=True, pinky=True)) == Gesture.PALM
+    assert clf.classify(make_hand(index=True)) == Gesture.PALM
+    # 握拳、雙指、三指、捏合不受影響
+    assert clf.classify(make_hand(index=False)) == Gesture.FIST
+    assert clf.classify(make_hand(index=True, middle=True)) == Gesture.TWO_FINGER
+    assert clf.classify(make_hand(index=True, middle=True, ring=True)) == Gesture.THREE_FINGER
+    assert clf.classify(make_hand(thumb_tip=(0.44, 0.44))) == Gesture.PINCH_INDEX
+
+
+def _fingers_out_of_top(hand):
+    """模擬手往上移出畫面：指節、指尖跑到畫面外，而且被 MediaPipe 猜成彎曲（指尖比指節靠近手腕）。"""
+    pts = make_hand(index=True, middle=True, ring=True, pinky=True, offset=(0.0, -0.45))
+    for base in (5, 9, 13, 17):
+        x = pts[base][0]
+        pts[base + 1] = (x, -0.05, 0.0)   # PIP
+        pts[base + 2] = (x, -0.03, 0.0)
+        pts[base + 3] = (x, -0.01, 0.0)   # 指尖：比 PIP 靠近手腕 → 判成彎曲
+    return pts
+
+
+def test_edge_hold_keeps_palm_when_fingers_leave_frame():
+    clf = GestureClassifier(loose_palm=False, edge_hold=True)
+    assert clf.classify(make_hand(index=True, middle=True, ring=True, pinky=True, offset=(0.0, -0.45))) == Gesture.PALM
+    assert clf.classify(_fingers_out_of_top(None)) == Gesture.PALM
+
+
+def test_without_edge_hold_fingers_out_of_frame_become_fist():
+    clf = GestureClassifier(loose_palm=False, edge_hold=False)
+    clf.classify(make_hand(index=True, middle=True, ring=True, pinky=True, offset=(0.0, -0.45)))
+    assert clf.classify(_fingers_out_of_top(None)) == Gesture.FIST
+
+
+def test_edge_hold_still_allows_fist_inside_frame():
+    clf = GestureClassifier(loose_palm=True, edge_hold=True)
+    assert clf.classify(make_hand(index=True, middle=True, ring=True, pinky=True)) == Gesture.PALM
+    assert clf.classify(make_hand(index=False)) == Gesture.FIST
+
+
+def test_edge_hold_no_new_pinch_when_tip_out_of_frame():
+    clf = GestureClassifier(loose_palm=True, edge_hold=True)
+    hand_ = make_hand(index=True, offset=(0.0, -0.45))
+    tx, ty = hand_[8][0], hand_[8][1]
+    assert ty < 0
+    hand_[4] = (tx + 0.005, ty + 0.005, 0.0)
+    assert clf.classify(hand_) != Gesture.PINCH_INDEX

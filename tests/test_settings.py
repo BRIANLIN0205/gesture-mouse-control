@@ -119,7 +119,8 @@ def test_settings_window_builds_and_saves(tmp_path, monkeypatch):
     from PySide6.QtWidgets import QApplication
     from gesture_mouse.settings_gui import build_window
 
-    _app = QApplication.instance() or QApplication([])  # noqa: F841  視窗需要 QApplication
+    app = QApplication.instance() or QApplication([])  # 視窗需要 QApplication
+    assert app is not None
     p = tmp_path / "config.yaml"
     p.write_text(REPO_CONFIG.read_text(encoding="utf-8"), encoding="utf-8")
     win = build_window(p)

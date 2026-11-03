@@ -124,6 +124,8 @@ python -m gesture_mouse
 | 不要雙手縮放 / 左手調音量 | `two_hands.zoom: false` / `two_hands.volume: false` |
 | 關掉點擊音 | `sound.click_enabled: false` |
 | 關掉游標旁小圓圈 | `overlay.enabled: false` |
+| 手有一部分在鏡頭外就不能移動 | 預設已開 `detection.loose_palm`（手指被誤判也算移動）和 `detection.edge_hold`（指頭出畫面時沿用上一次的狀態） |
+| 想要只伸食指時游標不動（舊行為） | `detection.loose_palm: false` |
 | 出畫面提示太敏感 | 調小 `detection.edge_margin` |
 | 用左手操作 | `detection.control_hand: left`；不分左右設 `any` |
 | 預覽視窗標的 L / R 和實際相反 | `detection.swap_hands: true` |
