@@ -1,7 +1,8 @@
 """主程式：鏡頭 → 手部偵測 → 手勢判斷 → 滑鼠指令。
 
 執行：python -m gesture_mouse [--config config.yaml] [--no-preview] [--tutorial] [--skip-tutorial]
-預覽視窗按 q 或 Esc 結束；沒有預覽視窗時按 Ctrl+C 結束。
+預覽視窗按 q 或 Esc 結束；沒有預覽視窗時按 Ctrl+C 結束，或從右下角系統匣圖示選「結束」。
+執行中修改 config.yaml（或用系統匣的「開啟設定」）會自動套用新數值。
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ import argparse
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 from .config import Config, load_config
 from .controller import Controller
@@ -75,7 +77,35 @@ def _draw(frame, lm, gesture: Gesture, paused: bool, fps: float, margin, hands=(
     cv2.putText(frame, f"{fps:.0f} FPS", (10, h - 12), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
 
 
-def run(cfg: Config, tutorial: str = "auto") -> None:
+def _apply_reload(cfg: Config, new_cfg: Config, parts: dict) -> None:
+    """設定檔被改了：把新數值套進執行中的元件。parts 裡的元件可能被換成新的。"""
+    from .live_config import apply_config
+    from .overlay import CursorOverlay
+    from .smoothing import PointFilter
+    from .sounds import SoundPlayer
+
+    changed, restart = apply_config(cfg, new_cfg)
+    if not changed:
+        return
+    d = cfg.detection
+    for clf in (parts["classifier"], parts["other_classifier"]):
+        clf.pinch_enter, clf.pinch_exit, clf.extend_ratio = d.pinch_enter, max(d.pinch_exit, d.pinch_enter), d.extend_ratio
+    if {"cursor.smoothing_min_cutoff", "cursor.smoothing_beta"} & changed:
+        parts["controller"].filter = PointFilter(cfg.cursor.smoothing_min_cutoff, cfg.cursor.smoothing_beta)
+    parts["two"].stable_frames = max(1, cfg.control.stable_frames)
+    if any(k.startswith("sound.") for k in changed):
+        parts["sounds"] = SoundPlayer(cfg.sound)
+    if any(k.startswith("overlay.") for k in changed):
+        parts["overlay"].close()
+        parts["overlay"] = CursorOverlay(cfg.overlay)
+    applied = sorted(changed - restart)
+    if applied:
+        print(f"已套用新設定：{', '.join(applied)}")
+    if restart:
+        print(f"這些設定要重開程式才會生效：{', '.join(sorted(restart))}")
+
+
+def run(cfg: Config, tutorial: str = "auto", config_path: Optional[Path] = None) -> None:
     """tutorial：auto = 第一次啟動才進教學；only = 只跑教學；off = 不進教學。"""
     import cv2
 
@@ -84,6 +114,8 @@ def run(cfg: Config, tutorial: str = "auto") -> None:
     from .mouse import PynputMouse, enable_dpi_awareness, get_screen_size
     from .overlay import CursorOverlay, overlay_status
     from .sounds import SoundPlayer
+    from .live_config import ConfigWatcher
+    from .tray import TrayIcon
     from .tutorial import TutorialPanel, TutorialTracker, mark_done, should_auto_run
     from .two_hands import TwoHandController
 
@@ -103,6 +135,8 @@ def run(cfg: Config, tutorial: str = "auto") -> None:
     sounds = SoundPlayer(cfg.sound)
     overlay = CursorOverlay(cfg.overlay)
     cap = _open_camera(cfg)
+    watcher = ConfigWatcher(config_path)
+    tray = TrayIcon(config_path)
 
     in_tutorial = tutorial == "only" or (tutorial == "auto" and should_auto_run())
     tracker = TutorialTracker() if in_tutorial else None
@@ -128,6 +162,27 @@ def run(cfg: Config, tutorial: str = "auto") -> None:
                 frame = cv2.flip(frame, 1)
 
             now = time.monotonic()
+            new_cfg = watcher.poll(now)
+            if new_cfg is not None:
+                parts = dict(classifier=classifier, other_classifier=other_classifier, controller=controller,
+                             two=two, sounds=sounds, overlay=overlay)
+                _apply_reload(cfg, new_cfg, parts)
+                sounds, overlay = parts["sounds"], parts["overlay"]
+
+            tray_cmds = []
+            quit_requested = False
+            for action in tray.poll():
+                if action == "quit":
+                    quit_requested = True
+                elif action == "toggle_pause":
+                    tray_cmds += controller.set_paused(not controller.paused)
+            if quit_requested:
+                break
+            if tray_cmds:
+                if tracker is None:
+                    mouse.execute(tray_cmds)
+                sounds.execute(tray_cmds)
+
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             hands = detector.detect_hands(rgb, int((now - start) * 1000))
             lm = select_hand(hands, cfg.detection.control_hand)   # 游標、點擊只聽主控手
@@ -147,6 +202,7 @@ def run(cfg: Config, tutorial: str = "auto") -> None:
             sounds.execute(cmds)
 
             edge = lm is not None and near_edge(lm, cfg.detection.edge_margin)
+            tray.set_paused(controller.paused)
             status = overlay_status(controller, lm is not None, edge, two)
             overlay.update(status, mouse.position if overlay.enabled else None, now)
 
@@ -198,6 +254,7 @@ def run(cfg: Config, tutorial: str = "auto") -> None:
     finally:
         mouse.execute(controller.release_all())
         overlay.close()
+        tray.close()
         cap.release()
         detector.close()
         cv2.destroyAllWindows()
@@ -216,4 +273,4 @@ def main(argv=None) -> None:
     if args.no_preview:
         cfg.show_preview = False
     mode = "only" if args.tutorial else ("off" if args.skip_tutorial else "auto")
-    run(cfg, tutorial=mode)
+    run(cfg, tutorial=mode, config_path=path)

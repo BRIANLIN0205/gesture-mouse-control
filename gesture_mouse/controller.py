@@ -170,6 +170,17 @@ class Controller:
     def inertia_active(self) -> bool:
         return self._inertia_v != 0.0
 
+    def set_paused(self, paused: bool) -> List[Command]:
+        """從系統匣選單暫停 / 恢復。回傳要執行的指令（放開按住的按鍵、播提示音）。"""
+        cmds: List[Command] = []
+        if paused == self.paused:
+            return cmds
+        self.paused = paused
+        if paused:
+            self._release_held(cmds)
+        cmds.append(PauseChanged(paused))
+        return cmds
+
     def release_all(self) -> List[Command]:
         """程式結束時呼叫，確保不會留下按住的按鍵。"""
         cmds: List[Command] = []
