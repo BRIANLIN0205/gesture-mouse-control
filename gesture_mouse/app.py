@@ -27,7 +27,7 @@ GESTURE_LABELS = {
     Gesture.PINCH_INDEX: "PINCH INDEX",
     Gesture.PINCH_MIDDLE: "PINCH MIDDLE (JOYSTICK)",
     Gesture.TWO_FINGER: "TWO FINGER (FLICK)",
-    Gesture.THREE_FINGER: "THREE FINGER (WINDOWS)",
+    Gesture.THREE_FINGER: "THREE FINGER (WINDOW MENU)",
     Gesture.FIST: "FIST (LIFT / HOLD = PAUSE)",
 }
 
@@ -77,6 +77,29 @@ def _draw(frame, lm, gesture: Gesture, paused: bool, fps: float, margin, hands=(
     cv2.putText(frame, f"{fps:.0f} FPS", (10, h - 12), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
 
 
+_PREVIEW_MENU = {"up": "ALL WINDOWS", "down": "DESKTOP", "left": "PREV", "right": "NEXT"}
+
+
+def _draw_menu(frame, origin, choice, select_distance: float) -> None:
+    """預覽視窗上畫三指選單：以伸出三指時的手掌位置為中心，選到的那格塗滿。"""
+    import cv2
+
+    h, w = frame.shape[:2]
+    cx, cy = int(origin[0] * w), int(origin[1] * h)
+    rx, ry = int(select_distance * w * 1.6), int(select_distance * h * 1.6)
+    centers = {"up": (cx, cy - ry), "down": (cx, cy + ry), "left": (cx - rx, cy), "right": (cx + rx, cy)}
+    purple = (255, 74, 176)
+    cv2.circle(frame, (cx, cy), int(select_distance * 0.6 * h), purple, 1)
+    for d, (x, y) in centers.items():
+        label = _PREVIEW_MENU[d]
+        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+        p1, p2 = (x - tw // 2 - 6, y - th // 2 - 6), (x + tw // 2 + 6, y + th // 2 + 6)
+        if d == choice:
+            cv2.rectangle(frame, p1, p2, purple, -1)
+        cv2.rectangle(frame, p1, p2, purple, 2)
+        cv2.putText(frame, label, (x - tw // 2, y + th // 2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+
 def _apply_reload(cfg: Config, new_cfg: Config, parts: dict) -> None:
     """設定檔被改了：把新數值套進執行中的元件。parts 裡的元件可能被換成新的。"""
     from .live_config import apply_config
@@ -113,7 +136,7 @@ def run(cfg: Config, tutorial: str = "auto", config_path: Optional[Path] = None)
     from .detector import HandDetector
     from .hand import near_edge, select_hand, select_other_hand
     from .mouse import PynputMouse, enable_dpi_awareness, get_screen_size
-    from .overlay import CursorOverlay, overlay_status
+    from .overlay import CursorOverlay, menu_state, overlay_status
     from .sounds import SoundPlayer
     from .live_config import ConfigWatcher
     from .tray import TrayIcon
@@ -207,7 +230,7 @@ def run(cfg: Config, tutorial: str = "auto", config_path: Optional[Path] = None)
             edge = lm is not None and near_edge(lm, cfg.detection.edge_margin)
             tray.set_paused(controller.paused)
             status = overlay_status(controller, lm is not None, edge, two)
-            overlay.update(status, mouse.position if overlay.enabled else None, now)
+            overlay.update(status, mouse.position if overlay.enabled else None, now, menu_state(controller))
 
             # 教學進度
             if tracker is not None:
@@ -236,6 +259,8 @@ def run(cfg: Config, tutorial: str = "auto", config_path: Optional[Path] = None)
                 _draw(frame, lm, controller.active, controller.paused, fps,
                       cfg.cursor.frame_margin if cfg.cursor.mode == "absolute" else None, hands,
                       "ZOOM (BOTH HANDS)" if two.zooming else ("VOLUME" if two.volume_active else None))
+                if controller.menu_origin is not None and not controller.paused:
+                    _draw_menu(frame, controller.menu_origin, controller.menu_choice, cfg.control.menu_select_distance)
                 if edge:
                     cv2.rectangle(frame, (0, 0), (w - 1, h - 1), (0, 212, 255), 6)
                 if tracker is not None:

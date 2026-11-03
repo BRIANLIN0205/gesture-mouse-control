@@ -81,6 +81,13 @@ FLICK_WINDOWS = {
     "left": Hotkey(("alt", "shift", "tab"), "prev_window"),
     "right": Hotkey(("alt", "tab"), "next_window"),
 }
+# 三指選單四個方向的文字（游標旁的十字選單、預覽視窗用）
+MENU_LABELS = {
+    "up": "所有視窗",
+    "down": "顯示桌面",
+    "left": "上一個視窗",
+    "right": "下一個視窗",
+}
 
 Command = object
 
@@ -134,6 +141,10 @@ class Controller:
         self._joy_start = 0.0
         self._joy_last_t: Optional[float] = None
         self._joy_rem = 0.0
+        # 三指選單：伸出三指時顯示四格，手往哪移就選哪格，放開三指才執行
+        self.menu_active = False
+        self.menu_choice: Optional[str] = None
+        self._menu_origin: Optional[Tuple[float, float]] = None
 
     # ---------- 對外介面 ----------
 
@@ -165,6 +176,11 @@ class Controller:
     def current_action(self) -> str:
         """目前生效手勢對應的動作（暫停時只有 toggle_pause 有效）。"""
         return self._action(self.active)
+
+    @property
+    def menu_origin(self) -> Optional[Tuple[float, float]]:
+        """三指選單的起點（鏡頭畫面上的正規化座標），預覽視窗畫選單用。"""
+        return self._menu_origin if self.menu_active else None
 
     @property
     def inertia_active(self) -> bool:
@@ -252,6 +268,10 @@ class Controller:
             self._joy_offset = (0.0, 0.0)
             self._joy_rem = 0.0
             self.joy_active = True
+        elif action == "menu_windows":
+            self.menu_active = True
+            self.menu_choice = None
+            self._menu_origin = None
         if action in _CLICK_ACTIONS:
             self._lock_until = t + self.cfg.control.click_lock_seconds
         if action == "scroll" or action in _CLICK_ACTIONS:
@@ -272,6 +292,13 @@ class Controller:
             self.joy_active = False
             if not self._hand_lost:
                 self._joystick_release(cmds)
+        if self.menu_active:
+            # 放開三指 = 執行選到的那格；停在中間或手直接離開畫面 = 取消
+            if self.menu_choice and not self._hand_lost and not self.paused:
+                cmds.append(FLICK_WINDOWS[self.menu_choice])
+            self.menu_active = False
+            self.menu_choice = None
+            self._menu_origin = None
         self.smart_state = None
         self._release_held(cmds)
         if self._scroll_ref is not None:
@@ -302,6 +329,8 @@ class Controller:
             self._scroll(lm, t, cmds)
         elif action == "joystick":
             self._joystick(lm, t, cmds)
+        elif action == "menu_windows":
+            self._menu(lm)
         elif action in ("flick_scroll", "flick_windows"):
             direction, speed = self._detect_swipe(lm, t)
             if direction:
@@ -450,6 +479,25 @@ class Controller:
             cmds.append(FLICK_NAV["left" if dx < 0 else "right"])      # 左右放開 = 上一頁 / 下一頁
         elif held < c.joystick_tap_seconds and abs(dy) > c.joystick_deadzone and abs(dy) >= abs(dx):
             cmds.append(ARROWS["up" if dy < 0 else "down"])           # 快速放開 = 方向鍵
+
+    # ---------- 三指選單：往上下左右移動選格子，放開三指執行 ----------
+
+    def _menu(self, lm: Landmarks) -> None:
+        if self._candidate != self.active and self._candidate_count > 0:
+            return  # 手指正在換手勢（準備放開）：鎖住目前的選擇，收手時的晃動不會改到
+        p = lm[MIDDLE_MCP]
+        if self._menu_origin is None:
+            self._menu_origin = (p[0], p[1])
+            return
+        d = self.cfg.control.menu_select_distance
+        dx, dy = p[0] - self._menu_origin[0], p[1] - self._menu_origin[1]
+        if math.hypot(dx, dy) < d * 0.6:
+            self.menu_choice = None          # 回到中間 = 不選
+        elif abs(dy) >= d and abs(dy) >= abs(dx):
+            self.menu_choice = "up" if dy < 0 else "down"
+        elif abs(dx) >= d and abs(dx) > abs(dy):
+            self.menu_choice = "left" if dx < 0 else "right"
+        # 介於中間和門檻之間：保持原本的選擇，避免在邊界上跳來跳去
 
     # ---------- 甩動 ----------
 

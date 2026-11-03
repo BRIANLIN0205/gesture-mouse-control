@@ -2,7 +2,7 @@ from gesture_mouse.config import config_from_dict
 from gesture_mouse.controller import Controller
 from gesture_mouse.gestures import Gesture
 from gesture_mouse.hand import near_edge
-from gesture_mouse.overlay import COLORS, is_visible, overlay_status
+from gesture_mouse.overlay import COLORS, is_visible, menu_boxes, menu_canvas_size, menu_state, overlay_status
 from tests.handgen import make_hand
 
 DT = 1 / 30
@@ -73,3 +73,23 @@ def test_near_edge():
     assert not near_edge(make_hand())
     assert near_edge(make_hand(offset=(0.49, 0)))      # 手移到最右邊
     assert near_edge(make_hand(offset=(0, 0.19)))      # 手腕快到畫面底部
+
+
+def test_menu_state_follows_three_finger_menu():
+    c = ctrl_with()
+    assert menu_state(c) is None
+    feed(c, Gesture.THREE_FINGER, make_hand(index=True, middle=True, ring=True))
+    assert menu_state(c) == "center"
+    feed(c, Gesture.THREE_FINGER, make_hand(offset=(0, -0.1), index=True, middle=True, ring=True), t0=0.1)
+    assert menu_state(c) == "up"
+    feed(c, Gesture.PALM, make_hand(), t0=0.2)
+    assert menu_state(c) is None
+
+
+def test_menu_boxes_fit_canvas_and_do_not_overlap():
+    boxes = menu_boxes()
+    cw, ch = menu_canvas_size()
+    for x1, y1, x2, y2 in boxes.values():
+        assert 0 <= x1 < x2 <= cw and 0 <= y1 < y2 <= ch
+    assert boxes["up"][3] <= boxes["center"][1] <= boxes["center"][3] <= boxes["down"][1]
+    assert boxes["left"][2] <= boxes["center"][0] <= boxes["center"][2] <= boxes["right"][0]

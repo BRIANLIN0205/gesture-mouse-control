@@ -23,6 +23,7 @@ ACTIONS = {
     "joystick",      # 搖桿：捏住時上下偏離起點越遠捲越快；快速放開 = 方向鍵上 / 下；左右偏移放開 = 上一頁 / 下一頁
     "scroll",        # 上下移動手來捲動（慢慢移動就捲，舊做法）
     "flick_scroll",  # 快速上下甩 = 捲動（帶慣性）；左右甩 = 上一頁 / 下一頁
+    "menu_windows",  # 顯示四格選單：手往上 / 下 / 左 / 右移選格子（所有視窗 / 顯示桌面 / 上一個 / 下一個視窗），放開才執行
     "flick_windows", # 快速上甩 = 所有視窗、下甩 = 顯示桌面、左右甩 = 切換視窗
     "toggle_pause",  # 維持一段時間後切換暫停 / 恢復
     "none",          # 不做事
@@ -34,7 +35,7 @@ DEFAULT_GESTURE_ACTIONS: Dict[str, str] = {
     Gesture.PINCH_INDEX.value: "pinch_smart",
     Gesture.PINCH_MIDDLE.value: "joystick",
     Gesture.TWO_FINGER.value: "none",
-    Gesture.THREE_FINGER.value: "flick_windows",
+    Gesture.THREE_FINGER.value: "menu_windows",
     Gesture.FIST.value: "toggle_pause",
 }
 
@@ -94,6 +95,8 @@ class ControlConfig:
     joystick_max_speed: float = 30.0 # 最高每秒捲幾格
     joystick_tap_seconds: float = 0.4  # 捏住不到這麼久就放開 = 方向鍵上 / 下
     joystick_nav_distance: float = 0.08  # 左右偏超過畫面寬的幾成，放開時翻頁
+    # 三指選單
+    menu_select_distance: float = 0.06  # 手離起點超過畫面的幾成才選到格子；回到這個距離的六成以內 = 不選
     # 手掌甩動（palm 設為 move_flick_scroll 時才有作用）
     palm_flick_nav: bool = True      # 手掌快速左右甩 = 上一頁 / 下一頁
     palm_swipe_min_speed: float = 2.0  # 手掌甩動捲動的速度門檻（比雙指 / 三指高，避免快速移動游標被誤判）

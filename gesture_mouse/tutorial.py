@@ -33,7 +33,7 @@ STEPS: List[Step] = [
     Step("scroll", "中指捏拇指，往上或下移（越遠捲越快）", "Middle pinch, move up/down (scroll)"),
     Step("arrow", "中指捏拇指，往上或下一點就放開（方向鍵）", "Middle pinch, nudge up/down, release (arrow)"),
     Step("nav", "中指捏拇指，往左或右移再放開（翻頁）", "Middle pinch, move left/right, release (back/fwd)"),
-    Step("windows", "伸出食指、中指、無名指，往任一方向甩（視窗）", "Three fingers: flick any direction (windows)"),
+    Step("windows", "伸出三指，往一個方向移再放開（視窗選單）", "Three fingers: move to a box, then release (window menu)"),
     Step("zoom", "兩手都用食指捏拇指，拉開或靠近（縮放）", "Both hands index pinch, spread/close (zoom)"),
     Step("volume", "左手中指捏拇指，往上或下移（音量）", "Left hand middle pinch, move up/down (volume)"),
     Step("pause", "握拳約 1.5 秒（暫停，會有提示音）", "Hold fist ~1.5 s (pause)"),
