@@ -95,7 +95,19 @@ python -m gesture_mouse
 
 第一次執行時，如果安裝的 MediaPipe 是新版（沒有舊的 `solutions` API），程式會自動下載手部模型（約 8 MB）到 `models/`。
 
+## 設定介面
+
+程式執行時，Windows 右下角系統匣（工作列時鐘旁的 `^` 箭頭裡）會有綠色手掌圖示，暫停時變紅色。點一下圖示會出現選單：
+
+- **開啟設定**：用滑桿和勾選框調整數值（游標、點擊與捏合、捲動與搖桿、雙手、聲音與顯示、鏡頭、進階）。改了會自動存進 `config.yaml`（原本的註解會保留），半秒內就套用，不用重開。標「需重開」的項目（鏡頭、辨識信心門檻、左右手對調）要重開程式才會生效。也可以雙擊圖示直接開設定。
+- **暫停 / 恢復**：和長握拳一樣。
+- **結束手勢滑鼠**。
+
+設定視窗也可以單獨開：`python -m gesture_mouse.settings_gui`。手勢對應哪個動作目前還是要直接改 `config.yaml` 的 `gestures` 區塊。
+
 ## 調整手感（config.yaml）
+
+用文字編輯器改 `config.yaml` 也可以，程式執行中存檔一樣會自動套用。
 
 | 想要 | 改這個 |
 | --- | --- |
@@ -127,6 +139,8 @@ python -m gesture_mouse
 | 不要雙手縮放 / 左手調音量 | `two_hands.zoom: false` / `two_hands.volume: false` |
 | 關掉點擊音 | `sound.click_enabled: false` |
 | 關掉游標旁小圓圈 | `overlay.enabled: false` |
+| 手有一部分在鏡頭外就不能移動 | 預設已開 `detection.loose_palm`（手指被誤判也算移動）和 `detection.edge_hold`（指頭出畫面時沿用上一次的狀態） |
+| 想要只伸食指時游標不動（舊行為） | `detection.loose_palm: false` |
 | 出畫面提示太敏感 | 調小 `detection.edge_margin` |
 | 用左手操作 | `detection.control_hand: left`；不分左右設 `any` |
 | 預覽視窗標的 L / R 和實際相反 | `detection.swap_hands: true` |
@@ -162,6 +176,10 @@ gesture_mouse/
   sounds.py      點擊、暫停 / 恢復音效
   overlay.py     游標旁的狀態小圓圈
   tutorial.py    第一次使用的手勢教學
+  live_config.py 執行中自動重新讀取設定檔
+  yaml_update.py 改數值時保留 config.yaml 的註解
+  settings_gui.py 設定視窗（PySide6）
+  tray.py        系統匣圖示與選單
   mouse.py       pynput 送出滑鼠指令、Windows DPI 處理
   config.py      讀取 config.yaml
 config.yaml      手勢對應與參數

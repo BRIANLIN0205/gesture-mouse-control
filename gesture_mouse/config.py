@@ -54,6 +54,8 @@ class DetectionConfig:
     pinch_enter: float = 0.25
     pinch_exit: float = 0.35
     extend_ratio: float = 1.1
+    loose_palm: bool = True          # 不是握拳、捏合、雙指、三指就當作張開手掌（手指被誤判時還能移動）；只伸食指也會變成移動
+    edge_hold: bool = True           # 指頭跑出畫面時沿用它上一次的狀態，避免手到邊緣突然變握拳或停住
     control_hand: str = "right"      # 主控手：right / left；any = 不分左右（兩手同框時取信心最高的）
     swap_hands: bool = False         # 左右手判斷相反時設 true（預覽視窗手腕旁會標 L / R）
     edge_margin: float = 0.03        # 手離畫面邊緣小於這個比例時提示「快出畫面了」
