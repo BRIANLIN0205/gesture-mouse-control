@@ -129,3 +129,18 @@ def test_settings_window_builds_and_saves(tmp_path, monkeypatch):
     assert load_config(p).cursor.relative_gain == 2.5
     assert "重開" in win.status.text()
     win.close()
+
+
+def test_tray_icon_creates_qapplication_first(monkeypatch):
+    # 回歸測試：沒有 QApplication 就呼叫 isSystemTrayAvailable() 會讓 Windows 閃退
+    pytest.importorskip("PySide6.QtWidgets")
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication, QSystemTrayIcon
+    from gesture_mouse.tray import TrayIcon
+
+    seen = []
+    monkeypatch.setattr(QSystemTrayIcon, "isSystemTrayAvailable",
+                        staticmethod(lambda: seen.append(QApplication.instance() is not None) or False))
+    tray = TrayIcon(None)
+    assert seen == [True]
+    assert not tray.enabled

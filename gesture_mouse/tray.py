@@ -52,9 +52,10 @@ class TrayIcon:
     def _create(self) -> None:
         from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
+        # 一定要先建 QApplication：沒有它就呼叫 isSystemTrayAvailable() 會讓 Windows 直接閃退（try 擋不住）
+        self._app = QApplication.instance() or QApplication(sys.argv[:1])
         if not QSystemTrayIcon.isSystemTrayAvailable():
             raise RuntimeError("這台電腦沒有系統匣")
-        self._app = QApplication.instance() or QApplication(sys.argv[:1])
         self._app.setQuitOnLastWindowClosed(False)
         self._icons = {False: _make_icon("#2ecc40"), True: _make_icon("#e8262e")}
 
