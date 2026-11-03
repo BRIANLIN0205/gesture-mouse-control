@@ -89,10 +89,9 @@ PAGES: List[Tuple[str, List[Tuple[str, List[Field]]]]] = [
             Field("control.scroll_sensitivity", "移動捲動靈敏度", "float", 5, 150, 1, "scroll 動作用：手移動整個畫面高 = 捲幾格"),
             Field("control.flick_scroll_gain", "甩動捲動力道", "float", 2, 80, 1, "越大一甩捲越多"),
         ]),
-        ("三指甩動（切換視窗）", [
-            Field("control.swipe_min_speed", "甩動速度門檻", "float", 0.3, 4.0, 0.1, "常誤觸就調大"),
-            Field("control.swipe_min_distance", "甩動距離門檻", "float", 0.02, 0.3, 0.01, "常誤觸就調大"),
-            Field("control.swipe_cooldown", "冷卻時間（秒）", "float", 0.1, 2.0, 0.05, "一次甩動後多久內不再判定"),
+        ("三指選單（切換視窗）", [
+            Field("control.menu_select_distance", "選格子的移動距離", "float", 0.02, 0.2, 0.005,
+                  "手往上下左右移超過畫面的這個比例就選到那格；太容易選到就調大"),
         ]),
     ]),
     ("雙手", [
@@ -145,6 +144,11 @@ PAGES: List[Tuple[str, List[Tuple[str, List[Field]]]]] = [
             Field("detection.min_tracking_confidence", "追蹤信心門檻", "float", 0.3, 0.95, 0.05),
             Field("detection.extend_ratio", "手指伸直門檻", "float", 0.9, 1.5, 0.01, "判斷手指是否伸直"),
             Field("control.stable_frames", "手勢確認幀數", "int", 1, 8, 1, "手勢要連續幾幀一致才生效；越大越穩但反應越慢"),
+        ]),
+        ("甩動判定（手勢動作設為 flick_scroll / flick_windows 才有作用）", [
+            Field("control.swipe_min_speed", "甩動速度門檻", "float", 0.3, 4.0, 0.1, "常誤觸就調大"),
+            Field("control.swipe_min_distance", "甩動距離門檻", "float", 0.02, 0.3, 0.01, "常誤觸就調大"),
+            Field("control.swipe_cooldown", "冷卻時間（秒）", "float", 0.1, 2.0, 0.05, "一次甩動後多久內不再判定"),
         ]),
         ("手掌甩動（手勢動作設為 move_flick_scroll 才有作用）", [
             Field("control.palm_flick_nav", "手掌左右甩翻頁", "bool"),

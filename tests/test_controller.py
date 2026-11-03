@@ -433,7 +433,7 @@ def test_diagonal_flick_is_ignored():
 
 
 def test_three_finger_flicks():
-    ctrl = make_ctrl(stable_frames=1)
+    ctrl = make_ctrl(stable_frames=1, gestures={"three_finger": "flick_windows"})
     assert FLICK_WINDOWS["up"] in swipe(ctrl, Gesture.THREE_FINGER, THREE, 0, -0.05)
     assert FLICK_WINDOWS["down"] in swipe(ctrl, Gesture.THREE_FINGER, THREE, 0, 0.05, t0=2)
     assert FLICK_WINDOWS["left"] in swipe(ctrl, Gesture.THREE_FINGER, THREE, -0.05, 0, t0=4)
@@ -441,17 +441,104 @@ def test_three_finger_flicks():
 
 
 def test_flicks_do_not_move_cursor():
-    ctrl = make_ctrl("relative", stable_frames=1)
+    ctrl = make_ctrl("relative", stable_frames=1, gestures={"three_finger": "flick_windows"})
     cmds = swipe(ctrl, Gesture.THREE_FINGER, THREE, 0.05, 0)
     assert not any(isinstance(c, (MoveBy, MoveTo)) for c in cmds)
 
 
 def test_flick_ignored_while_paused():
-    ctrl = make_ctrl(stable_frames=1, pause_hold_seconds=0.1)
+    ctrl = make_ctrl(stable_frames=1, pause_hold_seconds=0.1, gestures={"three_finger": "flick_windows"})
     run(ctrl, [(Gesture.FIST, make_hand(index=False))] * 10)
     assert ctrl.paused
     assert swipe(ctrl, Gesture.THREE_FINGER, THREE, 0, 0.05, t0=1) == []
 
+
+
+# ---------- 三指選單：往方向移選格子，放開三指執行 ----------
+
+def menu_move(ctrl, dx, dy, n=6, t0=0.0, settle=2, stable=None):
+    """伸出三指靜止 settle 幀，再慢慢移到 (dx, dy)，回傳全部指令。"""
+    frames = [(Gesture.THREE_FINGER, make_hand(**THREE))] * settle
+    frames += [(Gesture.THREE_FINGER, make_hand(offset=(dx * i / n, dy * i / n), **THREE)) for i in range(1, n + 1)]
+    return flat(run(ctrl, frames, t0=t0))
+
+
+def release(ctrl, t0=1.0, gesture=Gesture.PALM, lm="hand", n=3):
+    """放開三指換成其他手勢，回傳快捷鍵指令（手掌移動的指令不看）。"""
+    hand = make_hand() if lm == "hand" else lm
+    return [c for c in flat(run(ctrl, [(gesture, hand)] * n, t0=t0)) if isinstance(c, Hotkey)]
+
+
+def test_menu_select_and_release_each_direction():
+    for d, (dx, dy) in {"up": (0, -0.1), "down": (0, 0.1), "left": (-0.1, 0), "right": (0.1, 0)}.items():
+        ctrl = make_ctrl(stable_frames=1)
+        assert menu_move(ctrl, dx, dy) == []            # 移動中只選格子，不執行
+        assert ctrl.menu_active and ctrl.menu_choice == d
+        assert release(ctrl) == [FLICK_WINDOWS[d]]        # 放開三指才執行，而且只執行一次
+        assert not ctrl.menu_active and ctrl.menu_choice is None
+
+
+def test_menu_small_move_selects_nothing():
+    ctrl = make_ctrl(stable_frames=1)
+    menu_move(ctrl, 0.02, 0)
+    assert ctrl.menu_choice is None
+    assert release(ctrl) == []
+
+
+def test_menu_back_to_center_cancels():
+    ctrl = make_ctrl(stable_frames=1)
+    menu_move(ctrl, 0, -0.1)
+    assert ctrl.menu_choice == "up"
+    frames = [(Gesture.THREE_FINGER, make_hand(offset=(0, -0.1 + 0.1 * i / 4), **THREE)) for i in range(1, 5)]
+    run(ctrl, frames, t0=0.5)
+    assert ctrl.menu_choice is None
+    assert release(ctrl) == []
+
+
+def test_menu_change_choice_before_release():
+    ctrl = make_ctrl(stable_frames=1)
+    menu_move(ctrl, 0, -0.1)
+    frames = [(Gesture.THREE_FINGER, make_hand(offset=(0.12 * i / 4, -0.1 + 0.1 * i / 4), **THREE)) for i in range(1, 5)]
+    run(ctrl, frames, t0=0.5)
+    assert ctrl.menu_choice == "right"
+    assert release(ctrl) == [FLICK_WINDOWS["right"]]
+
+
+def test_menu_hand_lost_cancels():
+    ctrl = make_ctrl(stable_frames=1)
+    menu_move(ctrl, 0, 0.1)
+    assert release(ctrl, gesture=Gesture.NONE, lm=None) == []
+
+
+def test_menu_choice_frozen_while_fingers_change():
+    # 放開手指的那幾幀（手勢還沒確認切換）手晃動，不應改掉選擇
+    ctrl = make_ctrl(stable_frames=2)
+    run(ctrl, [(Gesture.THREE_FINGER, make_hand(**THREE))] * 3)
+    menu_move(ctrl, 0, -0.1, t0=0.2, settle=0)
+    assert ctrl.menu_choice == "up"
+    out = flat(run(ctrl, [(Gesture.PALM, make_hand(offset=(0, 0)))] * 3, t0=1))
+    assert out.count(FLICK_WINDOWS["up"]) == 1
+
+
+def test_menu_does_not_move_cursor():
+    ctrl = make_ctrl("relative", stable_frames=1)
+    cmds = menu_move(ctrl, 0.1, 0)
+    assert not any(isinstance(c, (MoveBy, MoveTo)) for c in cmds)
+
+
+def test_menu_ignored_while_paused():
+    ctrl = make_ctrl(stable_frames=1, pause_hold_seconds=0.1)
+    run(ctrl, [(Gesture.FIST, make_hand(index=False))] * 10)
+    assert ctrl.paused
+    menu_move(ctrl, 0, 0.1, t0=1)
+    assert not ctrl.menu_active
+    assert release(ctrl, t0=2, gesture=Gesture.FIST, lm=make_hand(index=False), n=1) == []
+
+
+def test_menu_distance_setting():
+    ctrl = make_ctrl(stable_frames=1, menu_select_distance=0.15)
+    menu_move(ctrl, 0.1, 0)
+    assert ctrl.menu_choice is None
 
 
 # ---------- 手掌快速上下甩 = 捲動 ----------
