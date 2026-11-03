@@ -159,12 +159,12 @@ gesture_mouse/
   sounds.py      點擊、暫停 / 恢復音效
   overlay.py     游標旁的狀態小圓圈
   tutorial.py    第一次使用的手勢教學
-  mouse.py       pynput 送出滑鼠指令、Windows DPI 處理
-  config.py      讀取 config.yaml
   live_config.py 執行中自動重新讀取設定檔
   yaml_update.py 改數值時保留 config.yaml 的註解
   settings_gui.py 設定視窗（PySide6）
   tray.py        系統匣圖示與選單
+  mouse.py       pynput 送出滑鼠指令、Windows DPI 處理
+  config.py      讀取 config.yaml
 config.yaml      手勢對應與參數
 tests/           單元測試
 ```
