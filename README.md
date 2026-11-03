@@ -44,7 +44,22 @@
 
 第一次執行會先進入教學，畫面右邊依序列出每個手勢，做對就打勾；練習時不會真的操作滑鼠。按 `s` 可跳過。之後想再練習：`python -m gesture_mouse --tutorial`。
 
-## 在 Windows 安裝
+## 一鍵啟動（Windows）
+
+先裝好 Python 3.12（安裝時勾選「Add python.exe to PATH」），下載本專案後：
+
+| 檔案 | 用途 |
+| --- | --- |
+| `start.bat` | 雙擊就啟動。第一次會自動建立虛擬環境並安裝套件（需要網路，約幾分鐘）；之後只有 `requirements.txt` 變動時才重裝，平常幾秒內開好 |
+| `create_shortcut.bat` | 在桌面建立「手勢控制滑鼠」捷徑，之後從桌面雙擊就能啟動 |
+| `autostart.bat` | 開機自動啟動的開關：雙擊一次開啟，再雙擊一次關閉（開機時視窗會縮到工作列） |
+
+`start.bat` 也能帶參數，例如在命令列執行 `start.bat --no-preview`。出錯時視窗會停住並顯示原因。
+搬動專案資料夾後，捷徑和開機啟動要重新執行一次對應的 .bat。
+
+想自己手動安裝，看下一節。
+
+## 在 Windows 安裝（手動）
 
 需要：Windows 10/11、可用的鏡頭、Python 3.10 ~ 3.12（建議 3.12，MediaPipe 對最新版 Python 的支援有時會晚一點）。
 
@@ -150,5 +165,8 @@ gesture_mouse/
   mouse.py       pynput 送出滑鼠指令、Windows DPI 處理
   config.py      讀取 config.yaml
 config.yaml      手勢對應與參數
+start.bat        一鍵啟動（建立虛擬環境、安裝套件、執行）
+create_shortcut.bat  建立桌面捷徑
+autostart.bat    開機自動啟動開關
 tests/           單元測試
 ```
